@@ -1,0 +1,173 @@
+// Prisma Schema untuk E-Presensi Tempat Les / Bimbel
+// Mendukung PostgreSQL (Supabase / Neon / Local) & SQLite untuk development
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ----------------------------------------------------
+// ENUM DEFINITIONS
+// ----------------------------------------------------
+
+enum UserRole {
+  ADMIN
+  SUPERADMIN
+  STAFF
+}
+
+enum MemberStatus {
+  ACTIVE
+  INACTIVE
+  GRADUATED
+}
+
+enum AttendanceStatus {
+  HADIR
+  TERLAMBAT
+  IZIN
+  SAKIT
+  ALPA
+}
+
+enum AttendanceMethod {
+  QR_SCAN
+  MANUAL
+  CARD_NFC
+}
+
+// ----------------------------------------------------
+// MODEL 1: ADMIN & PENGELOLA SISTEM
+// ----------------------------------------------------
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(ADMIN)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("users")
+}
+
+// ----------------------------------------------------
+// MODEL 2: DATA SISWA
+// ----------------------------------------------------
+model Student {
+  id             String       @id @default(uuid())
+  nis            String       @unique // Nomor Induk Siswa / ID Unik
+  name           String
+  gender         String?      // Laki-laki / Perempuan
+  phone          String?      // WhatsApp Siswa
+  email          String?
+  schoolOrigin   String?      // Asal Sekolah (misal: SMAN 1, SMPN 2)
+  gradeLevel     String?      // Jenjang (SD, 7 SMP, 12 SMA, UTBK)
+  programPackage String?      // Paket Bimbingan (Reguler, Privat, Intensif UTBK)
+  status         MemberStatus @default(ACTIVE)
+  qrCodeToken    String?      @unique // Token unik untuk generate barcode/QR presensi
+  
+  // Data Orang Tua / Wali
+  parentName     String?      // Nama Orang Tua / Wali
+  parentPhone    String?      // No WhatsApp Orang Tua (untuk notifikasi kehadiran)
+
+  // Relasi Presensi
+  attendances    Attendance[]
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@map("students")
+}
+
+// ----------------------------------------------------
+// MODEL 3: DATA TENTOR / PENGAJAR
+// ----------------------------------------------------
+model Tutor {
+  id             String            @id @default(uuid())
+  nip            String            @unique // Nomor Induk Pengajar / ID Unik
+  name           String
+  gender         String?
+  phone          String            // WhatsApp Tentor
+  email          String?           @unique
+  specialization String?           // Bidang / Mata Pelajaran (Matematika, Fisika, B. Inggris, dll)
+  hourlyRate     Decimal?          @db.Decimal(10, 2) // Tarif/Honor per sesi mengajar
+  status         MemberStatus      @default(ACTIVE)
+  qrCodeToken    String?           @unique
+
+  // Relasi Presensi Tentor
+  attendances    TutorAttendance[]
+
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@map("tutors")
+}
+
+// ----------------------------------------------------
+// MODEL 4: LOG PRESENSI SISWA
+// ----------------------------------------------------
+model Attendance {
+  id          String           @id @default(uuid())
+  studentId   String
+  student     Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  date        DateTime         @db.Date // Tanggal presensi (YYYY-MM-DD)
+  timeIn      DateTime         @default(now()) // Waktu check-in tepatnya
+  status      AttendanceStatus @default(HADIR)
+  method      AttendanceMethod @default(MANUAL)
+  
+  sessionInfo String?          // Keterangan sesi (misal: "Kelas 12 SMA Matematika")
+  notes       String?          // Alasan izin/sakit/keterangan lain
+  recordedBy  String?          // Nama admin/sistem yang mencatat
+
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([studentId, date])
+  @@map("attendances")
+}
+
+// ----------------------------------------------------
+// MODEL 5: LOG PRESENSI TENTOR / PENGAJAR
+// ----------------------------------------------------
+model TutorAttendance {
+  id            String           @id @default(uuid())
+  tutorId       String
+  tutor         Tutor            @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  
+  date          DateTime         @db.Date
+  timeIn        DateTime         @default(now())
+  timeOut       DateTime?
+  status        AttendanceStatus @default(HADIR)
+  method        AttendanceMethod @default(MANUAL)
+  
+  sessionTopic  String?          // Materi ajar yang disampaikan
+  teachingHours Float            @default(1.5) // Jumlah durasi jam mengajar
+  notes         String?
+  recordedBy    String?
+
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([tutorId, date])
+  @@map("tutor_attendances")
+}
+
+// ----------------------------------------------------
+// MODEL 6: PENGATURAN CMS TEMPAT LES & BRANDING
+// ----------------------------------------------------
+model SettingCMS {
+  id                   String   @id @default("default-settings")
+  lesName              String   @default("Bimbel Bintang Prestasi")
+  lesTagline           String   @default("Sistem Presensi & Manajemen Bimbel")
+  accentColor          String   @default("blue")
+  themeMode            String   @default("light")
+  lateToleranceMinutes Int      @default(15)
+  updatedAt            DateTime @updatedAt
+
+  @@map("settings_cms")
+}
