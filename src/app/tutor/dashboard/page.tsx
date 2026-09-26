@@ -1,0 +1,141 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { useThemeCMS } from "@/context/ThemeContext";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { TodaySchedule } from "@/components/dashboard/TodaySchedule";
+import { RecentAttendance } from "@/components/dashboard/RecentAttendance";
+import { WeeklyAttendanceTrend } from "@/components/dashboard/WeeklyAttendanceTrend";
+import { AttendanceStatusDistribution } from "@/components/dashboard/AttendanceStatusDistribution";
+import { ManualAttendanceModal } from "@/components/modals/ManualAttendanceModal";
+import {
+  Users,
+  GraduationCap,
+  Building2,
+  HeartHandshake,
+  Sparkles,
+} from "lucide-react";
+
+export default function TutorDashboardPage() {
+  const { themeColors } = useThemeCMS();
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [tutorUser, setTutorUser] = useState<any>(null);
+
+  useEffect(() => {
+    try {
+      const sess = localStorage.getItem("user_session");
+      if (sess) {
+        setTutorUser(JSON.parse(sess));
+      }
+    } catch (e) {}
+  }, []);
+
+  // Dynamic counts state
+  const [studentCount, setStudentCount] = useState<number | null>(null);
+  const [tutorCount, setTutorCount] = useState<number | null>(null);
+  const [branchCount, setBranchCount] = useState<number | null>(null);
+  const [attendanceRate, setAttendanceRate] = useState<string>("100%");
+
+  useEffect(() => {
+    async function loadDashboardMetrics() {
+      try {
+        const [resStudents, resTutors, resBranches, resAttendances] = await Promise.all([
+          fetch("/api/students", { cache: "no-store" }).then((r) => r.json()).catch(() => null),
+          fetch("/api/tutors", { cache: "no-store" }).then((r) => r.json()).catch(() => null),
+          fetch("/api/branches", { cache: "no-store" }).then((r) => r.json()).catch(() => null),
+          fetch("/api/attendances", { cache: "no-store" }).then((r) => r.json()).catch(() => null),
+        ]);
+
+        if (resStudents?.data && Array.isArray(resStudents.data)) {
+          setStudentCount(resStudents.data.length);
+        }
+
+        if (resTutors?.data && Array.isArray(resTutors.data)) {
+          setTutorCount(resTutors.data.length);
+        }
+
+        if (resBranches?.data && Array.isArray(resBranches.data)) {
+          setBranchCount(resBranches.data.length);
+        }
+
+        if (resAttendances?.data && Array.isArray(resAttendances.data) && resAttendances.data.length > 0) {
+          const hadirCount = resAttendances.data.filter((a: any) => a.status === "HADIR").length;
+          const rate = Math.round((hadirCount / resAttendances.data.length) * 100);
+          setAttendanceRate(`${rate}%`);
+        }
+      } catch (e) {
+        console.error("Gagal memuat metrik dashboard:", e);
+      }
+    }
+
+    loadDashboardMetrics();
+  }, []);
+
+  return (
+    <div className="space-y-6">
+      {/* Top Banner / Welcome */}
+      <div
+        className={`p-8 sm:p-10 md:p-12 rounded-3xl bg-linear-to-r ${themeColors.gradient} text-white shadow-xl ${themeColors.shadow} relative overflow-hidden transition-all duration-300 flex flex-col justify-center`}
+      >
+        {/* Background Hiasan */}
+        <div className="absolute -right-6 -bottom-10 opacity-15 pointer-events-none flex items-center pr-6">
+          <Sparkles className="w-80 h-80 text-white" />
+        </div>
+        <div className="absolute right-1/3 top-0 opacity-10 pointer-events-none">
+          <div className="w-64 h-64 rounded-full bg-white/20 blur-3xl"></div>
+        </div>
+
+        <div className="relative z-10 space-y-3 max-w-3xl">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight leading-tight">
+            Selamat Datang, {tutorUser?.name || "Tentor Bimbel"}! 👋
+          </h1>
+          <p className="text-sm font-medium text-white/90">
+            Portal khusus pengajar untuk mengelola presensi siswa, jadwal mengajar, dan rekap honor.
+          </p>
+        </div>
+      </div>
+
+      {/* Metrik Utama (Overview Cards) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+        <StatCard
+          title="Total Siswa Aktif"
+          value={studentCount !== null ? `${studentCount} Siswa` : "Memuat..."}
+          subtitle="Terdaftar di bimbel"
+          isPositive={true}
+          icon={Users}
+          colorVariant="blue"
+        />
+        <StatCard
+          title="Tingkat Kehadiran"
+          value={attendanceRate}
+          subtitle="Persentase siswa hadir"
+          isPositive={true}
+          icon={HeartHandshake}
+          colorVariant="emerald"
+        />
+      </div>
+
+      {/* Grid Grafik & Statistik */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <WeeklyAttendanceTrend />
+        </div>
+        <div className="lg:col-span-1">
+          <AttendanceStatusDistribution />
+        </div>
+      </div>
+
+      {/* Pemantauan Harian & Live Data */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <TodaySchedule />
+        <RecentAttendance />
+      </div>
+
+      {/* Modal Presensi Manual */}
+      <ManualAttendanceModal
+        isOpen={isManualModalOpen}
+        onClose={() => setIsManualModalOpen(false)}
+      />
+    </div>
+  );
+}

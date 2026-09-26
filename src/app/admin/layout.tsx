@@ -6,13 +6,14 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { ThemeCustomizerModal } from "@/components/cms/ThemeCustomizerModal";
 import { ManualAttendanceModal } from "@/components/modals/ManualAttendanceModal";
-import { AddUserModal } from "@/components/modals/AddUserModal";
+import { AddStudentModal } from "@/components/modals/AddStudentModal";
+import { AddTutorModal } from "@/components/modals/AddTutorModal";
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
   const [isManualAttendanceOpen, setIsManualAttendanceOpen] = useState(false);
-  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex transition-colors text-slate-900 dark:text-slate-100">
@@ -29,7 +30,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
           setMobileOpen={setMobileOpen}
           onOpenThemeModal={() => setIsThemeModalOpen(true)}
           onOpenManualAttendanceModal={() => setIsManualAttendanceOpen(true)}
-          onOpenAddUserModal={() => setIsAddUserOpen(true)}
+          onOpenAddUserModal={() => setIsAddStudentOpen(true)}
         />
         <main className="flex-1 p-4 md:p-6 lg:p-8 w-full max-w-[1920px] mx-auto space-y-6">
           {children}
@@ -45,9 +46,9 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         isOpen={isManualAttendanceOpen}
         onClose={() => setIsManualAttendanceOpen(false)}
       />
-      <AddUserModal
-        isOpen={isAddUserOpen}
-        onClose={() => setIsAddUserOpen(false)}
+      <AddStudentModal
+        isOpen={isAddStudentOpen}
+        onClose={() => setIsAddStudentOpen(false)}
       />
     </div>
   );

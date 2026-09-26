@@ -1,178 +1,350 @@
 "use client";
 
-import React, { useState } from "react";
-import { X, UserCheck, Check, Search, Calendar, Clock, Edit3 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { X, Check, Clock, UserCheck } from "lucide-react";
+import { useThemeCMS } from "@/context/ThemeContext";
+
+interface StudentOption {
+  id: string;
+  name: string;
+  nis: string;
+  gradeLevel?: string;
+  branchId?: string;
+  branch?: {
+    id?: string;
+    name: string;
+  };
+}
+
+export interface AttendanceDataToEdit {
+  id: string;
+  studentId?: string;
+  studentName: string;
+  date: string;
+  startTime?: string;
+  endTime?: string;
+  sessionInfo?: string;
+  status: "HADIR" | "TIDAK_HADIR";
+  notes?: string;
+  tentorName?: string;
+}
 
 interface ManualAttendanceModalProps {
   isOpen: boolean;
+  initialData?: AttendanceDataToEdit | null;
   onClose: () => void;
   onSave?: (data: any) => void;
 }
 
 export function ManualAttendanceModal({
   isOpen,
+  initialData,
   onClose,
   onSave,
 }: ManualAttendanceModalProps) {
-  const [role, setRole] = useState<"siswa" | "tutor">("siswa");
-  const [selectedUser, setSelectedUser] = useState("");
-  const [selectedClass, setSelectedClass] = useState("Kelas 12 SMA - UTBK");
-  const [status, setStatus] = useState<"hadir" | "terlambat" | "izin" | "sakit" | "alpa">("hadir");
+  const { themeColors } = useThemeCMS();
+  const [students, setStudents] = useState<StudentOption[]>([]);
+  const [tutors, setTutors] = useState<any[]>([]);
+  const [studentNameInput, setStudentNameInput] = useState("");
+  const [selectedStudentId, setSelectedStudentId] = useState("");
+  const [tentorNameInput, setTentorNameInput] = useState("");
+  const [startTime, setStartTime] = useState("15:30");
+  const [endTime, setEndTime] = useState("17:00");
+  const [status, setStatus] = useState<"HADIR" | "TIDAK_HADIR">("HADIR");
   const [notes, setNotes] = useState("");
+  const [attendanceDate, setAttendanceDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
   const [isSuccess, setIsSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchStudents();
+      fetchTutors();
+
+      if (initialData) {
+        setStudentNameInput(initialData.studentName || "");
+        setSelectedStudentId(initialData.studentId || "");
+        setAttendanceDate(initialData.date || new Date().toISOString().split("T")[0]);
+        setStatus(initialData.status || "HADIR");
+        setNotes(initialData.notes === "-" ? "" : initialData.notes || "");
+        setTentorNameInput(initialData.tentorName === "-" ? "" : initialData.tentorName || "");
+
+        if (initialData.sessionInfo && initialData.sessionInfo.includes("-")) {
+          const parts = initialData.sessionInfo.split("-").map((s) => s.trim());
+          if (parts[0]) setStartTime(parts[0]);
+          if (parts[1]) setEndTime(parts[1]);
+        } else {
+          setStartTime(initialData.startTime || "15:30");
+          setEndTime(initialData.endTime || "17:00");
+        }
+      } else {
+        setStudentNameInput("");
+        setSelectedStudentId("");
+        setNotes("");
+        setStatus("HADIR");
+        setAttendanceDate(new Date().toISOString().split("T")[0]);
+
+        const now = new Date();
+        const currentHours = String(now.getHours()).padStart(2, "0");
+        const currentMins = String(now.getMinutes()).padStart(2, "0");
+        setStartTime(`${currentHours}:${currentMins}`);
+
+        const endH = String((now.getHours() + 1) % 24).padStart(2, "0");
+        const endM = String((now.getMinutes() + 30) % 60).padStart(2, "0");
+        setEndTime(`${endH}:${endM}`);
+      }
+    }
+  }, [isOpen, initialData]);
+
+  const fetchStudents = async () => {
+    setLoadingStudents(true);
+    try {
+      const res = await fetch("/api/students", { cache: "no-store" });
+      const data = await res.json();
+      if (data?.data && Array.isArray(data.data)) {
+        setStudents(data.data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
+
+  const fetchTutors = async () => {
+    try {
+      const res = await fetch("/api/tutors", { cache: "no-store" });
+      const data = await res.json();
+      if (data?.data && Array.isArray(data.data)) {
+        setTutors(data.data);
+        if (data.data.length > 0 && !tentorNameInput && !initialData) {
+          setTentorNameInput(data.data[0].name);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   if (!isOpen) return null;
 
-  const mockUsers = role === "siswa" 
-    ? ["Ahmad Rizky (SMA 12)", "Siti Nurhaliza (SMA 12)", "Budi Santoso (SMP 9)", "Clarissa Putri (SD)"]
-    : ["Kak Aris Munandar, S.Si.", "Kak Dinda Rahma, S.Pd.", "Kak Bayu Pratama", "Kak Rian Hidayat, M.Si."];
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSuccess(true);
-    setTimeout(() => {
-      setIsSuccess(false);
-      if (onSave) {
-        onSave({ role, selectedUser, selectedClass, status, notes });
+    const nameToSubmit = studentNameInput.trim();
+    if (!nameToSubmit) {
+      alert("Silakan isi nama siswa!");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const matchedStudent = students.find(
+        (s) => s.name.toLowerCase() === nameToSubmit.toLowerCase() || s.id === selectedStudentId
+      );
+
+      const matchedTutor = tutors.find(
+        (t) => t.name.toLowerCase() === tentorNameInput.trim().toLowerCase()
+      );
+
+      const method = initialData ? "PUT" : "POST";
+      const payload = {
+        ...(initialData ? { id: initialData.id } : {}),
+        studentId: matchedStudent?.id || null,
+        studentName: nameToSubmit,
+        branchId: matchedStudent?.branchId || null,
+        tutorId: matchedTutor?.id || null,
+        date: attendanceDate,
+        startTime,
+        endTime,
+        sessionInfo: `${startTime} - ${endTime}`,
+        status,
+        notes,
+        tentorName: tentorNameInput || "Kak Admin",
+      };
+
+      const res = await fetch("/api/attendances", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const resData = await res.json();
+      if (!res.ok || !resData.success) {
+        alert(resData.error || "Gagal menyimpan presensi.");
+        return;
       }
-      onClose();
-    }, 1200);
+
+      setIsSuccess(true);
+      setTimeout(() => {
+        setIsSuccess(false);
+        if (onSave) {
+          onSave(resData.data);
+        }
+        onClose();
+      }, 900);
+    } catch (err: any) {
+      alert(err?.message || "Terjadi kesalahan saat menyimpan presensi.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-              <Edit3 size={20} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col">
+        {/* Header Modal */}
+        <div className="px-7 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <div className={`w-11 h-11 rounded-2xl ${themeColors.bg} text-white flex items-center justify-center shadow-md`}>
+              <UserCheck size={22} />
             </div>
             <div>
-              <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">
-                Input Presensi Manual
+              <h3 className="font-bold text-xl text-slate-800 dark:text-slate-100">
+                {initialData ? "Edit Jurnal & Presensi Siswa" : "Input Presensi Siswa Baru"}
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Catat kehadiran atau pengajuan izin siswa & tentor
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                {initialData ? "Perbarui detail kehadiran dan catatan belajar siswa" : "Catat presensi kehadiran & jam belajar siswa oleh tentor"}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="p-2.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
-            <X size={20} />
+            <X size={22} />
           </button>
         </div>
 
         {isSuccess ? (
-          <div className="p-10 text-center flex flex-col items-center justify-center space-y-3">
-            <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center animate-bounce">
-              <Check size={28} />
+          <div className="p-12 text-center flex flex-col items-center justify-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center animate-bounce">
+              <Check size={32} />
             </div>
-            <h4 className="font-bold text-lg text-slate-800 dark:text-slate-100">
-              Presensi Berhasil Dicatat!
+            <h4 className="font-bold text-xl text-slate-800 dark:text-slate-100">
+              {initialData ? "Presensi Berhasil Diperbarui!" : "Presensi Berhasil Dicatat!"}
             </h4>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Data kehadiran telah diperbarui di sistem
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Data kehadiran siswa telah tersimpan di sistem
             </p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            {/* Peran Selector */}
+          <form onSubmit={handleSubmit} className="p-7 space-y-5 text-sm">
+            {/* 1. Nama Siswa */}
             <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
-                Kategori Pengguna
+              <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-2 text-sm">
+                Nama Siswa <span className="text-rose-500">*</span>
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRole("siswa");
-                    setSelectedUser("");
-                  }}
-                  className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
-                    role === "siswa"
-                      ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-600/20"
-                      : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
-                  }`}
-                >
-                  Siswa
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRole("tutor");
-                    setSelectedUser("");
-                  }}
-                  className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
-                    role === "tutor"
-                      ? "bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-600/20"
-                      : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
-                  }`}
-                >
-                  Tentor / Pengajar
-                </button>
+              <input
+                type="text"
+                list="student-names-list"
+                value={studentNameInput}
+                onChange={(e) => {
+                  setStudentNameInput(e.target.value);
+                  const matched = students.find((s) => s.name === e.target.value);
+                  if (matched) setSelectedStudentId(matched.id);
+                }}
+                placeholder="Ketik atau pilih nama siswa..."
+                required
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <datalist id="student-names-list">
+                {students.map((st) => (
+                  <option key={st.id} value={st.name}>
+                    {st.name} {st.gradeLevel ? `(${st.gradeLevel})` : ""}
+                  </option>
+                ))}
+              </datalist>
+            </div>
+
+            {/* 2. Tentor Pengampu & Tanggal Presensi */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-2 text-sm">
+                  Tentor Pengampu <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  list="tutor-names-list"
+                  value={tentorNameInput}
+                  onChange={(e) => setTentorNameInput(e.target.value)}
+                  placeholder="Ketik nama tentor..."
+                  required
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <datalist id="tutor-names-list">
+                  {tutors.map((t) => (
+                    <option key={t.id} value={t.name}>
+                      {t.name} {t.specialization ? `(${t.specialization})` : ""}
+                    </option>
+                  ))}
+                </datalist>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-2 text-sm">
+                  Tanggal Presensi <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={attendanceDate}
+                  onChange={(e) => setAttendanceDate(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
             </div>
 
-            {/* Nama Pengguna */}
-            <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
-                Pilih Nama {role === "siswa" ? "Siswa" : "Tentor"}
-              </label>
-              <select
-                value={selectedUser}
-                onChange={(e) => setSelectedUser(e.target.value)}
-                required
-                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">-- Pilih Nama {role === "siswa" ? "Siswa" : "Tentor"} --</option>
-                {mockUsers.map((u, i) => (
-                  <option key={i} value={u}>
-                    {u}
-                  </option>
-                ))}
-              </select>
+            {/* 3. Jam Masuk & Jam Selesai */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="font-semibold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-1.5 text-sm">
+                  <Clock size={15} className="text-blue-500" />
+                  <span>Jam Masuk</span> <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="time"
+                  required
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-1.5 text-sm">
+                  <Clock size={15} className="text-amber-500" />
+                  <span>Jam Selesai</span> <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="time"
+                  required
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
 
-            {/* Class / Session */}
+            {/* 4. Status Kehadiran */}
             <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
-                Kelas / Sesi Les Hari Ini
-              </label>
-              <select
-                value={selectedClass}
-                onChange={(e) => setSelectedClass(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="Kelas 12 SMA - UTBK">Kelas 12 SMA - Intensif UTBK</option>
-                <option value="Kelas 9 SMP - Persiapan ASPD">Kelas 9 SMP - Persiapan ASPD</option>
-                <option value="Private SD">Private 1-on-1 SD</option>
-                <option value="Kelas 11 SMA - Reguler">Kelas 11 SMA - Reguler</option>
-              </select>
-            </div>
-
-            {/* Status Presensi */}
-            <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
+              <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-2 text-sm">
                 Status Kehadiran
               </label>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+              <div className="grid grid-cols-2 gap-2">
                 {[
-                  { id: "hadir", label: "Hadir", color: "emerald" },
-                  { id: "terlambat", label: "Terlambat", color: "amber" },
-                  { id: "izin", label: "Izin", color: "blue" },
-                  { id: "sakit", label: "Sakit", color: "violet" },
-                  { id: "alpa", label: "Alpha", color: "rose" },
+                  { id: "HADIR", label: "Hadir" },
+                  { id: "TIDAK_HADIR", label: "Tidak Hadir" },
                 ].map((st) => (
                   <button
                     key={st.id}
                     type="button"
                     onClick={() => setStatus(st.id as any)}
-                    className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all ${
+                    className={`py-2.5 px-2 rounded-xl text-xs sm:text-sm font-bold border transition-all cursor-pointer text-center ${
                       status === st.id
-                        ? "bg-slate-800 text-white border-slate-800 dark:bg-slate-100 dark:text-slate-900"
+                        ? "bg-slate-800 text-white border-slate-800 dark:bg-slate-100 dark:text-slate-900 shadow-sm"
                         : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
                     }`}
                   >
@@ -182,34 +354,35 @@ export function ManualAttendanceModal({
               </div>
             </div>
 
-            {/* Catatan / Alasan */}
+            {/* 5. Catatan */}
             <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
-                Catatan / Alasan (Opsional)
+              <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-2 text-sm">
+                Catatan Jurnal Belajar
               </label>
               <textarea
-                rows={2}
+                rows={4}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Contoh: Surat izin sakit dilampirkan via WA orang tua..."
-                className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Contoh: Belajar Bab 3 Matriks, aktif bertanya dan menyelesaikan soal latihan dengan baik..."
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed"
               />
             </div>
 
-            {/* Submit */}
-            <div className="pt-2 flex items-center justify-end gap-2">
+            {/* Submit Buttons */}
+            <div className="pt-3 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                className="px-5 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
               >
                 Batal
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition-all active:scale-95"
+                disabled={submitting}
+                className={`px-6 py-2.5 rounded-xl ${themeColors.bg} ${themeColors.hover} text-white font-bold text-sm shadow-md transition-all active:scale-95 cursor-pointer`}
               >
-                Simpan Presensi
+                {submitting ? "Menyimpan..." : initialData ? "Simpan Perubahan" : "Simpan Presensi"}
               </button>
             </div>
           </form>

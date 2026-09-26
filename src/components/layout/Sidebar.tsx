@@ -9,9 +9,6 @@ import {
   UserCheck,
   UserX,
   History,
-  CalendarDays,
-  School,
-  BookOpen,
   GraduationCap,
   Users,
   HeartHandshake,
@@ -20,12 +17,10 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  LogOut,
-  Sparkles,
-  Menu,
   X,
   Building2,
-  Palette,
+  CalendarDays,
+  UserCog,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -34,12 +29,25 @@ interface SidebarProps {
   onOpenThemeModal?: () => void;
 }
 
-export function Sidebar({ mobileOpen, setMobileOpen, onOpenThemeModal }: SidebarProps) {
+interface MenuItem {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  badge?: string;
+}
+
+interface MenuGroup {
+  title: string;
+  items: MenuItem[];
+}
+
+export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const { settings, themeColors } = useThemeCMS();
 
-  const menuGroups = [
+
+  const menuGroups: MenuGroup[] = [
     {
       title: "Utama",
       items: [
@@ -57,10 +65,9 @@ export function Sidebar({ mobileOpen, setMobileOpen, onOpenThemeModal }: Sidebar
           name: "Presensi Siswa",
           href: "/admin/presensi/siswa",
           icon: UserCheck,
-          badge: "Live",
         },
         {
-          name: "Presensi Pengajar",
+          name: "Presensi Tentor",
           href: "/admin/presensi/tutor",
           icon: UserX,
         },
@@ -72,10 +79,10 @@ export function Sidebar({ mobileOpen, setMobileOpen, onOpenThemeModal }: Sidebar
       ],
     },
     {
-      title: "Manajemen Pengguna",
+      title: "Manajemen Pengguna & Cabang",
       items: [
         {
-          name: "Data Pengajar / Tutor",
+          name: "Data Tentor",
           href: "/admin/pengguna/tutor",
           icon: GraduationCap,
         },
@@ -85,9 +92,19 @@ export function Sidebar({ mobileOpen, setMobileOpen, onOpenThemeModal }: Sidebar
           icon: Users,
         },
         {
+          name: "Jadwal Siswa",
+          href: "/admin/pengguna/jadwal-siswa",
+          icon: CalendarDays,
+        },
+        {
           name: "Data Orang Tua",
           href: "/admin/pengguna/orang-tua",
           icon: HeartHandshake,
+        },
+        {
+          name: "Data Cabang",
+          href: "/admin/cabang",
+          icon: Building2,
         },
       ],
     },
@@ -113,6 +130,11 @@ export function Sidebar({ mobileOpen, setMobileOpen, onOpenThemeModal }: Sidebar
           name: "Pengaturan Sistem",
           href: "/admin/pengaturan",
           icon: Settings,
+        },
+        {
+          name: "Manajemen Akun",
+          href: "/admin/akun",
+          icon: UserCog,
         },
       ],
     },
@@ -209,48 +231,6 @@ export function Sidebar({ mobileOpen, setMobileOpen, onOpenThemeModal }: Sidebar
             })}
           </div>
         ))}
-      </div>
-
-      {/* User Profile Footer */}
-      <div className="p-3 border-t border-slate-800 bg-slate-900/50">
-        <div
-          className={`flex items-center gap-3 p-2 rounded-xl bg-slate-800/50 border border-slate-700/50 ${
-            collapsed && !mobileOpen ? "justify-center" : ""
-          }`}
-        >
-          <div className="w-9 h-9 rounded-full bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center font-bold text-indigo-300 text-sm shrink-0">
-            AD
-          </div>
-          {(!collapsed || mobileOpen) && (
-            <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-xs font-semibold text-slate-200 truncate">
-                Admin Utama
-              </span>
-              <span className="text-[11px] text-slate-400 truncate">
-                admin@lesku.id
-              </span>
-            </div>
-          )}
-          {(!collapsed || mobileOpen) && (
-            <div className="flex items-center gap-1">
-              {onOpenThemeModal && (
-                <button
-                  onClick={onOpenThemeModal}
-                  title="Kustomisasi Tema & CMS"
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-slate-800 transition-colors"
-                >
-                  <Palette size={16} />
-                </button>
-              )}
-              <button
-                title="Keluar"
-                className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-colors"
-              >
-                <LogOut size={16} />
-              </button>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );

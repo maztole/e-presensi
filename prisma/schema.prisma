@@ -17,6 +17,7 @@ enum UserRole {
   ADMIN
   SUPERADMIN
   STAFF
+  TENTOR
 }
 
 enum MemberStatus {
@@ -27,16 +28,26 @@ enum MemberStatus {
 
 enum AttendanceStatus {
   HADIR
-  TERLAMBAT
   IZIN
-  SAKIT
   ALPA
+  SAKIT
+  TIDAK_HADIR
 }
 
 enum AttendanceMethod {
   QR_SCAN
   MANUAL
   CARD_NFC
+}
+
+enum HonorStatus {
+  LUNAS
+  PENDING
+}
+
+enum SppStatus {
+  LUNAS
+  BELUM_LUNAS
 }
 
 // ----------------------------------------------------
@@ -62,20 +73,23 @@ model Student {
   nis            String       @unique // Nomor Induk Siswa / ID Unik
   name           String
   gender         String?      // Laki-laki / Perempuan
-  phone          String?      // WhatsApp Siswa
-  email          String?
   schoolOrigin   String?      // Asal Sekolah (misal: SMAN 1, SMPN 2)
   gradeLevel     String?      // Jenjang (SD, 7 SMP, 12 SMA, UTBK)
-  programPackage String?      // Paket Bimbingan (Reguler, Privat, Intensif UTBK)
   status         MemberStatus @default(ACTIVE)
   qrCodeToken    String?      @unique // Token unik untuk generate barcode/QR presensi
   
+  // Relasi ke Cabang / Tempat Les
+  branchId       String?
+  branch         Branch?      @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
   // Data Orang Tua / Wali
   parentName     String?      // Nama Orang Tua / Wali
   parentPhone    String?      // No WhatsApp Orang Tua (untuk notifikasi kehadiran)
 
-  // Relasi Presensi
+  // Relasi Presensi & Jadwal Personal Siswa
   attendances    Attendance[]
+  schedules      StudentSchedule[]
+  sppPayments    SppPayment[]
 
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -84,25 +98,78 @@ model Student {
 }
 
 // ----------------------------------------------------
+// MODEL BARU: DATA TEMPAT / CABANG LES
+// ----------------------------------------------------
+model Branch {
+  id        String    @id @default(uuid())
+  code      String    @unique // Misal: "CBG-001"
+  name      String    // Misal: "Cabang Nongkosawit"
+  address   String?   // Alamat Lengkap Cabang
+  phone     String?   // No Telp / WhatsApp Cabang
+  isActive  Boolean   @default(true)
+
+  students         Student[]
+  schedules        StudentSchedule[]
+  attendances      Attendance[]
+  tutorAttendances TutorAttendance[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("branches")
+}
+
+// ----------------------------------------------------
+// MODEL: JADWAL SISWA (PER INDIVIDU SISWA - HARI FLEKSIBEL & TENTOR KONEK DATABASE)
+// ----------------------------------------------------
+model StudentSchedule {
+  id          String   @id @default(uuid())
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  branchId    String
+  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  // Hari Belajar Seminggu (bebas dipiih hari apa saja)
+  days        String   // Misal: "Senin, Rabu, Jumat"
+  startTime   String   // Misal: "16:00"
+  endTime     String   // Misal: "17:30"
+  
+  // Relasi ke Tabel Tentor
+  tutorId     String?
+  tutor       Tutor?   @relation(fields: [tutorId], references: [id], onDelete: SetNull)
+  tentorName  String?  // Nama fallback / tentor name
+
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("student_schedules")
+}
+
+// ----------------------------------------------------
 // MODEL 3: DATA TENTOR / PENGAJAR
 // ----------------------------------------------------
 model Tutor {
-  id             String            @id @default(uuid())
-  nip            String            @unique // Nomor Induk Pengajar / ID Unik
-  name           String
-  gender         String?
-  phone          String            // WhatsApp Tentor
-  email          String?           @unique
-  specialization String?           // Bidang / Mata Pelajaran (Matematika, Fisika, B. Inggris, dll)
-  hourlyRate     Decimal?          @db.Decimal(10, 2) // Tarif/Honor per sesi mengajar
-  status         MemberStatus      @default(ACTIVE)
-  qrCodeToken    String?           @unique
+  id                 String            @id @default(uuid())
+  nip                String            @unique // Nomor Induk Pengajar / ID Unik
+  name               String
+  gender             String?
+  phone              String            // WhatsApp Tentor
+  email              String?           @unique
+  specialization     String?           // Bidang / Mata Pelajaran (Matematika, Fisika, B. Inggris, dll)
+  status             MemberStatus      @default(ACTIVE)
+  qrCodeToken        String?           @unique
 
   // Relasi Presensi Tentor
-  attendances    TutorAttendance[]
+  attendances        TutorAttendance[]
+  studentAttendances Attendance[]
+  honorPayments      HonorPayment[]
+  schedules          StudentSchedule[]
 
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 
   @@map("tutors")
 }
@@ -114,15 +181,20 @@ model Attendance {
   id          String           @id @default(uuid())
   studentId   String
   student     Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  branchId    String?
+  branch      Branch?          @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  tutorId     String?
+  tutor       Tutor?           @relation(fields: [tutorId], references: [id], onDelete: SetNull)
   
   date        DateTime         @db.Date // Tanggal presensi (YYYY-MM-DD)
   timeIn      DateTime         @default(now()) // Waktu check-in tepatnya
   status      AttendanceStatus @default(HADIR)
-  method      AttendanceMethod @default(MANUAL)
   
   sessionInfo String?          // Keterangan sesi (misal: "Kelas 12 SMA Matematika")
   notes       String?          // Alasan izin/sakit/keterangan lain
-  recordedBy  String?          // Nama admin/sistem yang mencatat
+  recordedBy  String?          // Nama admin/sistem yang mencatat (fallback)
 
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
@@ -138,15 +210,18 @@ model TutorAttendance {
   id            String           @id @default(uuid())
   tutorId       String
   tutor         Tutor            @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+
+  branchId      String?
+  branch        Branch?          @relation(fields: [branchId], references: [id], onDelete: SetNull)
   
   date          DateTime         @db.Date
   timeIn        DateTime         @default(now())
   timeOut       DateTime?
   status        AttendanceStatus @default(HADIR)
-  method        AttendanceMethod @default(MANUAL)
   
   sessionTopic  String?          // Materi ajar yang disampaikan
-  teachingHours Float            @default(1.5) // Jumlah durasi jam mengajar
+  gradeLevel    String?          // Jenjang sesi: "SD", "SMP", "SMA"
+  teachingHours Float            @default(1.0) // Jumlah durasi sesi mengajar (1 sesi = 1 jam)
   notes         String?
   recordedBy    String?
 
@@ -158,8 +233,93 @@ model TutorAttendance {
 }
 
 // ----------------------------------------------------
-// MODEL 6: PENGATURAN CMS TEMPAT LES & BRANDING
+// MODEL 6: STATUS PEMBAYARAN HONOR TENTOR (per bulan)
 // ----------------------------------------------------
+model HonorPayment {
+  id        String      @id @default(uuid())
+  tutorId   String
+  tutor     Tutor       @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  month     String      // Format: "YYYY-MM" misal "2026-09"
+  status    HonorStatus @default(PENDING)
+  paidAt    DateTime?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([tutorId, month])
+  @@index([month])
+  @@map("honor_payments")
+}
+
+// ----------------------------------------------------
+// MODEL 7: STATUS PEMBAYARAN SPP SISWA (per bulan)
+// ----------------------------------------------------
+model SppPayment {
+  id        String    @id @default(uuid())
+  studentId String
+  student   Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  month     String    // Format: "YYYY-MM" misal "2026-09"
+  status    SppStatus @default(BELUM_LUNAS)
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([studentId, month])
+  @@index([month])
+  @@map("spp_payments")
+}
+
+// ----------------------------------------------------
+// MODEL 8: KONFIGURASI HONOR PER JENJANG (dapat diedit admin)
+// ----------------------------------------------------
+model HonorRateConfig {
+  id        String   @id @default(uuid())
+  gradeLevel String   // Contoh: "SD", "SMP", "SMA", "UTBK"
+  rate      Int      // Harga per sesi (Rp)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([gradeLevel])
+  @@map("honor_rate_configs")
+}
+
+// ----------------------------------------------------
+// MODEL 9: KONFIGURASI SPP PER JENJANG (dapat diedit admin)
+// ----------------------------------------------------
+model SppRateConfig {
+  id        String   @id @default(uuid())
+  gradeLevel String   // Contoh: "SD", "SMP", "SMA", "UTBK"
+  rate      Int      // Nominal SPP per bulan (Rp)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([gradeLevel])
+  @@map("spp_rate_configs")
+}
+
+// ----------------------------------------------------
+// MODEL 10: PENGATURAN CMS TEMPAT LES & BRANDING
+// ----------------------------------------------------
+
+// ----------------------------------------------------
+// MODEL 11: NOTIFIKASI SISTEM (HAPUS / RETENSI OTOMATIS)
+// ----------------------------------------------------
+model Notification {
+  id          String   @id @default(uuid())
+  type        String   // "attendance" | "warning" | "info"
+  title       String
+  message     String
+  isRead      Boolean  @default(false)
+  expiresAt   DateTime // Waktu kadaluarsa (misal 7 hari dari penambahan)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isRead, createdAt])
+  @@index([expiresAt])
+  @@map("notifications")
+}
+
 model SettingCMS {
   id                   String   @id @default("default-settings")
   lesName              String   @default("Bimbel Bintang Prestasi")

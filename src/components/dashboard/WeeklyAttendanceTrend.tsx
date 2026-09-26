@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -11,28 +11,37 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import { TrendingUp, Calendar } from "lucide-react";
+import { TrendingUp, Loader2 } from "lucide-react";
 
-const weeklyData = [
-  { day: "Senin", siswa: 45, tentor: 6, target: 50 },
-  { day: "Selasa", siswa: 48, tentor: 6, target: 50 },
-  { day: "Rabu", siswa: 42, tentor: 5, target: 50 },
-  { day: "Kamis", siswa: 51, tentor: 6, target: 50 },
-  { day: "Jumat", siswa: 38, tentor: 4, target: 50 },
-  { day: "Sabtu", siswa: 55, tentor: 7, target: 50 },
-];
-
-const monthlyData = [
-  { day: "Minggu 1", siswa: 260, tentor: 32, target: 280 },
-  { day: "Minggu 2", siswa: 275, tentor: 34, target: 280 },
-  { day: "Minggu 3", siswa: 268, tentor: 33, target: 280 },
-  { day: "Minggu 4", siswa: 285, tentor: 36, target: 280 },
-];
+interface TrendData {
+  day: string;
+  siswa: number;
+  tentor: number;
+}
 
 export function WeeklyAttendanceTrend() {
   const [timeRange, setTimeRange] = useState<"weekly" | "monthly">("weekly");
+  const [data, setData] = useState<TrendData[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  const data = timeRange === "weekly" ? weeklyData : monthlyData;
+  useEffect(() => {
+    const fetchTrendData = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/reports/trend?range=${timeRange}`);
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          setData(json.data);
+        }
+      } catch (err) {
+        console.error("Gagal mengambil data tren kehadiran:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTrendData();
+  }, [timeRange]);
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm h-full flex flex-col justify-between">
@@ -43,11 +52,11 @@ export function WeeklyAttendanceTrend() {
               Tren Kehadiran
             </h3>
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
-              <TrendingUp size={12} /> +6.4% Kedisiplinan
+              <TrendingUp size={12} /> Data Real-time
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Pergerakan grafik kehadiran siswa dan tentor dari waktu ke waktu
+            Pergerakan grafik kehadiran siswa dan tentor dari database
           </p>
         </div>
 
@@ -77,51 +86,59 @@ export function WeeklyAttendanceTrend() {
       </div>
 
       {/* Chart */}
-      <div className="h-64 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#33415525" />
-            <XAxis
-              dataKey="day"
-              tick={{ fontSize: 11, fill: "#94a3b8" }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              tick={{ fontSize: 11, fill: "#94a3b8" }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "#0f172a",
-                borderRadius: "12px",
-                border: "1px solid #334155",
-                color: "#f8fafc",
-                fontSize: "12px",
-              }}
-            />
-            <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "8px" }} />
-            <Line
-              type="monotone"
-              name="Kehadiran Siswa"
-              dataKey="siswa"
-              stroke="#2563eb"
-              strokeWidth={3}
-              dot={{ r: 4, fill: "#2563eb", strokeWidth: 2, stroke: "#ffffff" }}
-              activeDot={{ r: 6 }}
-            />
-            <Line
-              type="monotone"
-              name="Kehadiran Tentor"
-              dataKey="tentor"
-              stroke="#8b5cf6"
-              strokeWidth={2}
-              strokeDasharray="4 4"
-              dot={{ r: 3, fill: "#8b5cf6" }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+      <div className="h-64 w-full flex items-center justify-center">
+        {loading ? (
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <Loader2 size={18} className="animate-spin text-blue-500" />
+            <span>Memuat data grafik...</span>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#33415525" />
+              <XAxis
+                dataKey="day"
+                tick={{ fontSize: 11, fill: "#94a3b8" }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: "#94a3b8" }}
+                axisLine={false}
+                tickLine={false}
+                allowDecimals={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#0f172a",
+                  borderRadius: "12px",
+                  border: "1px solid #334155",
+                  color: "#f8fafc",
+                  fontSize: "12px",
+                }}
+              />
+              <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "8px" }} />
+              <Line
+                type="monotone"
+                name="Kehadiran Siswa"
+                dataKey="siswa"
+                stroke="#2563eb"
+                strokeWidth={3}
+                dot={{ r: 4, fill: "#2563eb", strokeWidth: 2, stroke: "#ffffff" }}
+                activeDot={{ r: 6 }}
+              />
+              <Line
+                type="monotone"
+                name="Kehadiran Tentor"
+                dataKey="tentor"
+                stroke="#8b5cf6"
+                strokeWidth={2}
+                strokeDasharray="4 4"
+                dot={{ r: 3, fill: "#8b5cf6" }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
       </div>
     </div>
   );

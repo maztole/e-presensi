@@ -1,5 +1,7 @@
-import React from "react";
-import { Clock, MapPin, User, ChevronRight } from "lucide-react";
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { Clock, MapPin, User, ChevronRight, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 interface ScheduleItem {
@@ -14,54 +16,39 @@ interface ScheduleItem {
   status: "ongoing" | "upcoming" | "completed";
 }
 
-const mockSchedules: ScheduleItem[] = [
-  {
-    id: "1",
-    className: "Kelas 12 SMA - Intensif UTBK",
-    subject: "Matematika Saintek",
-    tutor: "Kak Aris Munandar, S.Si.",
-    room: "Ruang Newton (Lt. 2)",
-    time: "14:00 - 15:30",
-    studentsAttended: 12,
-    totalStudents: 12,
-    status: "ongoing",
-  },
-  {
-    id: "2",
-    className: "Kelas 9 SMP - Persiapan ASPD",
-    subject: "Bahasa Inggris",
-    tutor: "Kak Dinda Rahma, S.Pd.",
-    room: "Ruang Einstein (Lt. 1)",
-    time: "15:45 - 17:15",
-    studentsAttended: 0,
-    totalStudents: 8,
-    status: "upcoming",
-  },
-  {
-    id: "3",
-    className: "Private 1-on-1 SD",
-    subject: "Calistung & Sains Dasar",
-    tutor: "Kak Bayu Pratama",
-    room: "Ruang Privat A",
-    time: "16:00 - 17:00",
-    studentsAttended: 0,
-    totalStudents: 1,
-    status: "upcoming",
-  },
-  {
-    id: "4",
-    className: "Kelas 11 SMA - Reguler",
-    subject: "Fisika Dasar",
-    tutor: "Kak Rian Hidayat, M.Si.",
-    room: "Ruang Galileo (Lt. 2)",
-    time: "10:00 - 11:30",
-    studentsAttended: 9,
-    totalStudents: 10,
-    status: "completed",
-  },
-];
-
 export function TodaySchedule() {
+  const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<string>("admin");
+
+  useEffect(() => {
+    try {
+      const sess = localStorage.getItem("user_session");
+      if (sess) {
+        const parsed = JSON.parse(sess);
+        if (parsed.role) setUserRole(parsed.role);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true);
+        const res = await fetch("/api/reports/today", { cache: "no-store" });
+        const json = await res.json();
+        if (json.success && json.data?.schedules) {
+          setSchedules(json.data.schedules);
+        }
+      } catch (e) {
+        console.error("Gagal memuat jadwal hari ini:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
   const getStatusBadge = (status: ScheduleItem["status"]) => {
     switch (status) {
       case "ongoing":
@@ -98,63 +85,61 @@ export function TodaySchedule() {
           </p>
         </div>
         <Link
-          href="/admin/akademik/jadwal"
+          href={userRole === "tutor" ? "/tutor/presensi" : "/admin/presensi/siswa"}
           className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 flex items-center gap-1"
         >
-          Lihat Semua <ChevronRight size={14} />
+          Lihat Presensi <ChevronRight size={14} />
         </Link>
       </div>
 
-      <div className="space-y-3">
-        {mockSchedules.map((schedule) => (
-          <div
-            key={schedule.id}
-            className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-          >
-            <div className="space-y-1.5 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-semibold text-sm text-slate-800 dark:text-slate-200">
-                  {schedule.className}
-                </span>
-                <span className="text-xs px-2 py-0.5 rounded-md bg-slate-200/70 dark:bg-slate-700/60 font-medium text-slate-700 dark:text-slate-300">
-                  {schedule.subject}
-                </span>
+      {loading ? (
+        <div className="py-8 flex justify-center text-slate-400">
+          <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+        </div>
+      ) : schedules.length === 0 ? (
+        <div className="py-8 text-center text-xs text-slate-400">
+          Tidak ada jadwal sesi aktif untuk hari ini.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {schedules.map((schedule) => (
+            <div
+              key={schedule.id}
+              className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+            >
+              <div className="space-y-1.5 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-semibold text-sm text-slate-800 dark:text-slate-200">
+                    {schedule.className}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded-md bg-slate-200/70 dark:bg-slate-700/60 font-medium text-slate-700 dark:text-slate-300">
+                    {schedule.subject}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
+                  <div className="flex items-center gap-1">
+                    <User size={13} className="text-slate-400" />
+                    <span>{schedule.tutor}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <MapPin size={13} className="text-slate-400" />
+                    <span>{schedule.room}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Clock size={13} className="text-slate-400" />
+                    <span>{schedule.time}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center sm:flex-col sm:items-end justify-between gap-2 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-200/60 dark:border-slate-800">
                 {getStatusBadge(schedule.status)}
               </div>
-
-              <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-                <div className="flex items-center gap-1.5">
-                  <User size={13} className="text-slate-400" />
-                  <span>{schedule.tutor}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <MapPin size={13} className="text-slate-400" />
-                  <span>{schedule.room}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Clock size={13} className="text-slate-400" />
-                  <span>{schedule.time}</span>
-                </div>
-              </div>
             </div>
-
-            <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/50 dark:border-slate-700/50">
-              <div className="text-left sm:text-right">
-                <p className="text-[11px] text-slate-400">Kehadiran</p>
-                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  {schedule.studentsAttended} / {schedule.totalStudents} Siswa
-                </p>
-              </div>
-              <Link
-                href={`/admin/presensi/siswa?jadwalId=${schedule.id}`}
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors"
-              >
-                Absensi
-              </Link>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
