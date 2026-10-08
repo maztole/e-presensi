@@ -69,14 +69,6 @@ export default function TutorAttendancePage() {
       const data = await res.json();
       if (data.success) {
         let list = data.data || [];
-        const scheduled = data.scheduledItems || [];
-
-        // Jika belum ada log presensi untuk siswa berjadwal hari ini, tampilkan dari scheduledItems
-        if (scheduled.length > 0) {
-          const existingStudentIds = new Set(list.map((a: any) => a.studentId));
-          const pendingFromSchedule = scheduled.filter((sch: any) => !existingStudentIds.has(sch.studentId));
-          list = [...list, ...pendingFromSchedule];
-        }
 
         // Filter log presensi yang ditangani/diampu tentor ini jika login
         if (tutorUser?.name) {
@@ -245,8 +237,11 @@ export default function TutorAttendancePage() {
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-slate-400">
-                    Belum ada data presensi pada tanggal ini.
+                  <td colSpan={6} className="text-center py-10 text-slate-400">
+                    <div className="flex flex-col items-center gap-1">
+                      <span>Belum ada data presensi pada tanggal ini.</span>
+                      <span className="text-[11px]">Data akan muncul setelah tentor melakukan input presensi.</span>
+                    </div>
                   </td>
                 </tr>
               ) : (

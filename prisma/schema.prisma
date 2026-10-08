@@ -193,6 +193,7 @@ model Attendance {
   status      AttendanceStatus @default(HADIR)
   
   sessionInfo String?          // Keterangan sesi (misal: "Kelas 12 SMA Matematika")
+  materi      String?            // Materi/topik pelajaran
   notes       String?          // Alasan izin/sakit/keterangan lain
   recordedBy  String?          // Nama admin/sistem yang mencatat (fallback)
 

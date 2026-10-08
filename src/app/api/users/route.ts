@@ -204,7 +204,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, accountType, name, email, username, password, nip, phone, specialization, role, status } = body;
+    const { id, accountType, name, email, username, password, currentPassword, nip, phone, specialization, role, status } = body;
 
     if (!id || !accountType) {
       return NextResponse.json(
@@ -217,6 +217,23 @@ export async function PUT(req: NextRequest) {
     const targetNip = nip || username;
 
     if (accountType === "ADMIN") {
+      // Jika ganti password, validasi password lama
+      if (password) {
+        const existing = await prisma.user.findUnique({ where: { id } });
+        if (!existing) {
+          return NextResponse.json({ success: false, error: "Akun admin tidak ditemukan!" }, { status: 404 });
+        }
+        if (!currentPassword) {
+          return NextResponse.json({ success: false, error: "Kata sandi saat ini wajib diisi untuk ganti password!" }, { status: 400 });
+        }
+        if (existing.passwordHash !== currentPassword) {
+          return NextResponse.json({ success: false, error: "Kata sandi saat ini tidak sesuai!" }, { status: 400 });
+        }
+        if (password.length < 6) {
+          return NextResponse.json({ success: false, error: "Kata sandi baru minimal 6 karakter!" }, { status: 400 });
+        }
+      }
+
       const updatedUser = await prisma.user.update({
         where: { id },
         data: {

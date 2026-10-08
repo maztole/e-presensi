@@ -39,6 +39,7 @@ interface StudentAttendanceItem {
   fullDateFormatted?: string;
   timeIn: string;
   status: "HADIR" | "TIDAK_HADIR";
+  materi?: string;
   notes?: string;
   parentPhone?: string;
   tentorName?: string;
@@ -65,6 +66,7 @@ interface ScheduledItem {
   parentPhone?: string;
   parentName?: string;
   status: string;
+  materi?: string;
   notes?: string;
   isValidated: boolean;
   timeIn?: string;

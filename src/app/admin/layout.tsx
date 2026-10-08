@@ -11,6 +11,7 @@ import { AddTutorModal } from "@/components/modals/AddTutorModal";
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
   const [isManualAttendanceOpen, setIsManualAttendanceOpen] = useState(false);
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
@@ -21,13 +22,18 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       <Sidebar
         mobileOpen={mobileOpen}
         setMobileOpen={setMobileOpen}
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
         onOpenThemeModal={() => setIsThemeModalOpen(true)}
       />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
         <Header
+          mobileOpen={mobileOpen}
           setMobileOpen={setMobileOpen}
+          collapsed={collapsed}
+          setCollapsed={setCollapsed}
           onOpenThemeModal={() => setIsThemeModalOpen(true)}
           onOpenManualAttendanceModal={() => setIsManualAttendanceOpen(true)}
           onOpenAddUserModal={() => setIsAddStudentOpen(true)}

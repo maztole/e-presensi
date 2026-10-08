@@ -52,6 +52,7 @@ export default function SystemSettingsPage() {
   const [isRatesSaved, setIsRatesSaved] = useState(false);
   const [loadingRates, setLoadingRates] = useState(false);
   const [savingRates, setSavingRates] = useState(false);
+  const [savingAccount, setSavingAccount] = useState(false);
   const [accountMessage, setAccountMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [copiedVar, setCopiedVar] = useState<string | null>(null);
 
@@ -89,13 +90,18 @@ export default function SystemSettingsPage() {
     fetchRates();
   }, []);
 
-  const handleUpdateAccount = (e: React.FormEvent) => {
+  const handleUpdateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     setAccountMessage(null);
 
-    if (newPassword || confirmPassword || currentPassword) {
+    const isChangingPassword = !!(newPassword || confirmPassword || currentPassword);
+    if (isChangingPassword) {
       if (!currentPassword) {
         setAccountMessage({ type: "error", text: "Masukkan kata sandi saat ini untuk mengonfirmasi perubahan!" });
+        return;
+      }
+      if (!newPassword) {
+        setAccountMessage({ type: "error", text: "Kata sandi baru wajib diisi!" });
         return;
       }
       if (newPassword !== confirmPassword) {
@@ -108,21 +114,77 @@ export default function SystemSettingsPage() {
       }
     }
 
-    localStorage.setItem(
-      "epresensi_admin_profile",
-      JSON.stringify({ name: adminName, email: adminEmail })
-    );
+    // Ambil ID admin dari session login (user_session) — fallback ke epresensi_admin_id
+    let adminId = "";
+    try {
+      const sessRaw = localStorage.getItem("user_session");
+      if (sessRaw) {
+        const sess = JSON.parse(sessRaw);
+        adminId = sess?.id || "";
+      }
+    } catch {}
+    if (!adminId) adminId = localStorage.getItem("epresensi_admin_id") || "";
 
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
+    if (!adminId) {
+      setAccountMessage({ type: "error", text: "Sesi admin tidak ditemukan. Silakan login ulang!" });
+      return;
+    }
 
-    setAccountMessage({
-      type: "success",
-      text: "Profil & kata sandi akun admin berhasil diperbarui!",
-    });
+    setSavingAccount(true);
+    try {
+      const res = await fetch("/api/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: adminId,
+          accountType: "ADMIN",
+          name: adminName,
+          email: adminEmail,
+          password: newPassword || undefined,
+          currentPassword: currentPassword || undefined,
+        }),
+      });
+      const json = await res.json();
 
-    setTimeout(() => setAccountMessage(null), 4000);
+      if (!res.ok || !json.success) {
+        setAccountMessage({
+          type: "error",
+          text: json.error || "Gagal memperbarui profil & kata sandi.",
+        });
+        return;
+      }
+
+      // Sinkronkan ke localStorage agar login berikutnya konsisten
+      localStorage.setItem(
+        "epresensi_admin_profile",
+        JSON.stringify({ name: adminName, email: adminEmail })
+      );
+      try {
+        const sessRaw = localStorage.getItem("user_session");
+        if (sessRaw) {
+          const sess = JSON.parse(sessRaw);
+          sess.name = adminName;
+          sess.email = adminEmail;
+          localStorage.setItem("user_session", JSON.stringify(sess));
+        }
+      } catch {}
+
+      setAccountMessage({
+        type: "success",
+        text: json.message || "Profil & kata sandi akun admin berhasil diperbarui!",
+      });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      setAccountMessage({
+        type: "error",
+        text: "Terjadi kesalahan saat menyimpan ke server.",
+      });
+    } finally {
+      setSavingAccount(false);
+      setTimeout(() => setAccountMessage(null), 4000);
+    }
   };
 
   const handleSaveWaTemplate = (e: React.FormEvent) => {
@@ -364,10 +426,11 @@ export default function SystemSettingsPage() {
             <div className="flex justify-end pt-2">
               <button
                 type="submit"
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl ${themeColors.bg} ${themeColors.hover} text-white font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer`}
+                disabled={savingAccount}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl ${themeColors.bg} ${themeColors.hover} text-white font-bold text-xs shadow-md transition-all active:scale-95 cursor-pointer disabled:opacity-50`}
               >
-                <ShieldCheck size={16} />
-                <span>Simpan Perubahan Akun</span>
+                {savingAccount ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
+                <span>{savingAccount ? "Menyimpan..." : "Simpan Perubahan Akun"}</span>
               </button>
             </div>
           </form>

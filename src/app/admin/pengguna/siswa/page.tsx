@@ -12,7 +12,6 @@ import {
   Trash2,
   CheckCircle2,
   GraduationCap,
-  School,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
@@ -320,10 +319,7 @@ export default function StudentManagementPage() {
                       </div>
                     </td>
                     <td className="px-4 py-4 text-slate-600 dark:text-slate-300">
-                      <div className="flex items-center gap-1">
-                        <School size={13} className="text-slate-400 shrink-0" />
-                        <span>{st.schoolOrigin || "-"}</span>
-                      </div>
+                      {st.schoolOrigin || "-"}
                     </td>
                     <td className="px-4 py-4 text-slate-600 dark:text-slate-300">
                       <div>{st.parentName || "-"}</div>

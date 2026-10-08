@@ -21,13 +21,24 @@ import {
 interface TutorSidebarProps {
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
+  collapsed?: boolean;
+  setCollapsed?: (collapsed: boolean) => void;
 }
 
-export function TutorSidebar({ mobileOpen, setMobileOpen }: TutorSidebarProps) {
+export function TutorSidebar({
+  mobileOpen,
+  setMobileOpen,
+  collapsed: externalCollapsed,
+  setCollapsed: externalSetCollapsed,
+}: TutorSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { settings, themeColors } = useThemeCMS();
+  const [internalCollapsed, setInternalCollapsed] = useState(false);
   const [tutorUser, setTutorUser] = useState<any>(null);
+
+  const collapsed = externalCollapsed !== undefined ? externalCollapsed : internalCollapsed;
+  const setCollapsed = externalSetCollapsed || setInternalCollapsed;
 
   useEffect(() => {
     try {
@@ -37,6 +48,7 @@ export function TutorSidebar({ mobileOpen, setMobileOpen }: TutorSidebarProps) {
       }
     } catch (e) {}
   }, []);
+
 
   const handleLogout = () => {
     if (confirm("Apakah Anda yakin ingin keluar dari portal tentor?")) {
@@ -81,14 +93,16 @@ export function TutorSidebar({ mobileOpen, setMobileOpen }: TutorSidebarProps) {
           <div className={`w-10 h-10 rounded-xl bg-linear-to-tr ${themeColors.logoGradient} flex items-center justify-center shrink-0 shadow-lg ${themeColors.shadow}`}>
             <GraduationCap className="w-5 h-5 text-white" />
           </div>
-          <div className="flex flex-col min-w-0">
-            <span className="font-bold text-sm tracking-tight text-white truncate">
-              {settings.lesName}
-            </span>
-            <span className={`text-[11px] ${themeColors.textMuted} font-medium truncate`}>
-              Portal Tentor / Pengajar
-            </span>
-          </div>
+          {(!collapsed || mobileOpen) && (
+            <div className="flex flex-col min-w-0">
+              <span className="font-bold text-sm tracking-tight text-white truncate">
+                {settings.lesName}
+              </span>
+              <span className={`text-[11px] ${themeColors.textMuted} font-medium truncate`}>
+                Portal Tentor / Pengajar
+              </span>
+            </div>
+          )}
         </div>
         {mobileOpen && (
           <button
@@ -101,27 +115,37 @@ export function TutorSidebar({ mobileOpen, setMobileOpen }: TutorSidebarProps) {
       </div>
 
       {/* Tutor Profile Pill */}
-      <div className="p-4 border-b border-slate-800/80 bg-slate-950/40">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center font-bold text-sm">
-            {tutorUser?.name ? tutorUser.name.charAt(0).toUpperCase() : "T"}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-bold text-white truncate">
-              {tutorUser?.name || "Tentor Bimbel"}
-            </p>
-            <p className="text-[11px] text-slate-400 truncate">
-              {tutorUser?.specialization || tutorUser?.nip || "Pengajar Aktif"}
-            </p>
+      {(!collapsed || mobileOpen) ? (
+        <div className="p-4 border-b border-slate-800/80 bg-slate-950/40">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center font-bold text-sm">
+              {tutorUser?.name ? tutorUser.name.charAt(0).toUpperCase() : "T"}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-white truncate">
+                {tutorUser?.name || "Tentor Bimbel"}
+              </p>
+              <p className="text-[11px] text-slate-400 truncate">
+                {tutorUser?.specialization || tutorUser?.nip || "Pengajar Aktif"}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="p-3 border-b border-slate-800/80 flex justify-center bg-slate-950/40">
+          <div className="w-9 h-9 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center font-bold text-sm" title={tutorUser?.name || "Tentor Bimbel"}>
+            {tutorUser?.name ? tutorUser.name.charAt(0).toUpperCase() : "T"}
+          </div>
+        </div>
+      )}
 
       {/* Nav Menu */}
       <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500 px-3 mb-2">
-          Menu Pengajar
-        </p>
+        {(!collapsed || mobileOpen) && (
+          <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500 px-3 mb-2">
+            Menu Pengajar
+          </p>
+        )}
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
@@ -131,26 +155,37 @@ export function TutorSidebar({ mobileOpen, setMobileOpen }: TutorSidebarProps) {
               key={item.href}
               href={item.href}
               onClick={() => setMobileOpen(false)}
-              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all relative group ${
                 isActive
                   ? `${themeColors.bg} text-white shadow-sm font-bold`
                   : "text-slate-300 hover:text-white hover:bg-slate-800/70"
               }`}
+              title={collapsed && !mobileOpen ? item.name : undefined}
             >
               <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
-              <span className="truncate">{item.name}</span>
+              {(!collapsed || mobileOpen) && <span className="truncate">{item.name}</span>}
+
+              {/* Tooltip for Collapsed Sidebar */}
+              {collapsed && !mobileOpen && (
+                <div className="absolute left-full ml-3 px-3 py-1.5 bg-slate-800 text-slate-100 text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity">
+                  {item.name}
+                </div>
+              )}
             </Link>
           );
         })}
       </div>
-
-      </div>
+    </div>
   );
 
   return (
     <>
       {/* Desktop Sidenav */}
-      <aside className="hidden lg:flex w-64 shrink-0 fixed inset-y-0 left-0 z-30 flex-col">
+      <aside
+        className={`hidden lg:flex flex-col sticky top-0 h-screen transition-all duration-300 z-30 ${
+          collapsed ? "w-20" : "w-64"
+        }`}
+      >
         {sidebarContent}
       </aside>
 

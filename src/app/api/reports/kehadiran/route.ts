@@ -15,8 +15,8 @@ export async function GET(req: NextRequest) {
     let dateEnd: Date | undefined;
     if (month) {
       const [year, mon] = month.split("-").map(Number);
-      dateStart = new Date(year, mon - 1, 1);
-      dateEnd = new Date(year, mon, 0, 23, 59, 59, 999); // last day of the month
+      dateStart = new Date(Date.UTC(year, mon - 1, 1, 0, 0, 0, 0));
+      dateEnd = new Date(Date.UTC(year, mon, 0, 23, 59, 59, 999)); // last day of the month
     }
 
     if (type === "siswa") {

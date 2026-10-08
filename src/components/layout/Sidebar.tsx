@@ -15,8 +15,6 @@ import {
   FileSpreadsheet,
   Receipt,
   Settings,
-  ChevronLeft,
-  ChevronRight,
   X,
   Building2,
   CalendarDays,
@@ -26,6 +24,8 @@ import {
 interface SidebarProps {
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
+  collapsed?: boolean;
+  setCollapsed?: (collapsed: boolean) => void;
   onOpenThemeModal?: () => void;
 }
 
@@ -41,10 +41,18 @@ interface MenuGroup {
   items: MenuItem[];
 }
 
-export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
+export function Sidebar({
+  mobileOpen,
+  setMobileOpen,
+  collapsed: externalCollapsed,
+  setCollapsed: externalSetCollapsed,
+}: SidebarProps) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
+  const [internalCollapsed, setInternalCollapsed] = useState(false);
   const { settings, themeColors } = useThemeCMS();
+
+  const collapsed = externalCollapsed !== undefined ? externalCollapsed : internalCollapsed;
+  const setCollapsed = externalSetCollapsed || setInternalCollapsed;
 
 
   const menuGroups: MenuGroup[] = [
@@ -127,14 +135,14 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
       title: "Pengaturan",
       items: [
         {
-          name: "Pengaturan Sistem",
-          href: "/admin/pengaturan",
-          icon: Settings,
-        },
-        {
           name: "Manajemen Akun",
           href: "/admin/akun",
           icon: UserCog,
+        },
+        {
+          name: "Pengaturan Sistem",
+          href: "/admin/pengaturan",
+          icon: Settings,
         },
       ],
     },
@@ -159,15 +167,6 @@ export function Sidebar({ mobileOpen, setMobileOpen }: SidebarProps) {
             </div>
           )}
         </div>
-
-        {/* Desktop Collapse Toggle */}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="hidden md:flex p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
-          title={collapsed ? "Buka Sidebar" : "Tutup Sidebar"}
-        >
-          {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-        </button>
 
         {/* Mobile Close Button */}
         <button

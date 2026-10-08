@@ -1,28 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// Initial seed notifications if DB is empty
-const DEMO_NOTIFICATIONS = [
-  {
-    type: "attendance",
-    title: "Presensi Siswa Masuk",
-    message: "Ahmad Fauzi (Kelas 12 SMA) telah tercatat Hadir di Cabang Pusat.",
-    isRead: false,
-  },
-  {
-    type: "warning",
-    title: "Presensi Tentor Terlambat",
-    message: "Budi Santoso, S.Pd baru melakukan presensi pukul 16.15 (Jadwal: 16.00).",
-    isRead: false,
-  },
-  {
-    type: "info",
-    title: "Rekap Bulanan Siap",
-    message: "Laporan presensi dan honor tentor bulan ini sudah dapat diunduh.",
-    isRead: true,
-  },
-];
-
 export async function GET() {
   try {
     const now = new Date();
@@ -53,33 +31,8 @@ export async function GET() {
           createdAt: "desc",
         },
       });
-
-      // 3. Seed demo data if database table is completely empty
-      if (notifications.length === 0) {
-        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-        await prisma.notification.createMany({
-          data: DEMO_NOTIFICATIONS.map((item) => ({
-            ...item,
-            expiresAt,
-          })),
-        });
-
-        notifications = await prisma.notification.findMany({
-          orderBy: {
-            createdAt: "desc",
-          },
-        });
-      }
     } catch {
-      // Fallback in-memory list if Prisma is not synced yet
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      notifications = DEMO_NOTIFICATIONS.map((item, index) => ({
-        id: `demo-${index + 1}`,
-        ...item,
-        expiresAt,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }));
+      notifications = [];
     }
 
     return NextResponse.json({

@@ -53,7 +53,9 @@ export default function AttendanceHistoryPage() {
   const filteredSiswa = attendances.filter((item) => {
     const matchSearch =
       item.studentName?.toLowerCase().includes(search.toLowerCase()) ||
-      item.sessionInfo?.toLowerCase().includes(search.toLowerCase());
+      item.sessionInfo?.toLowerCase().includes(search.toLowerCase()) ||
+      item.materi?.toLowerCase().includes(search.toLowerCase()) ||
+      item.notes?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === "ALL" || item.status === statusFilter;
     return matchSearch && matchStatus;
   });
@@ -68,13 +70,14 @@ export default function AttendanceHistoryPage() {
 
   const exportToCSV = () => {
     if (activeTab === "siswa") {
-      const headers = ["Nama Siswa", "Tentor Pengampu", "Cabang", "Hari & Tanggal", "Jam Mulai - Selesai", "Keterangan"];
+      const headers = ["Nama Siswa", "Tentor Pengampu", "Cabang", "Hari & Tanggal", "Jam Mulai - Selesai", "Materi / Topik", "Catatan"];
       const rows = filteredSiswa.map((item) => [
         `"${item.studentName}"`,
         `"${item.tentorName || "-"}"`,
         `"${item.branchName || "-"}"`,
         `"${item.fullDateFormatted || item.date || "-"}"`,
         `"${item.sessionInfo || item.timeIn || "-"}"`,
+        `"${item.materi || "-"}"`,
         `"${item.notes || "-"}"`,
       ]);
 
@@ -87,16 +90,13 @@ export default function AttendanceHistoryPage() {
       link.click();
       document.body.removeChild(link);
     } else {
-      const headers = ["Nama Tentor", "Topik/Sesi", "Cabang", "Tanggal", "Jam Masuk", "Jam Keluar", "Status", "Catatan"];
+      const headers = ["Nama Tentor", "Cabang", "Tanggal", "Jam Masuk - Keluar", "Status"];
       const rows = filteredTentor.map((item) => [
         `"${item.tutorName}"`,
-        `"${item.sessionTopic || "-"}"`,
         `"${item.branchName || "-"}"`,
         `"${item.date}"`,
-        `"${item.timeIn || "-"}"`,
-        `"${item.timeOut || "-"}"`,
+        `"${item.timeDisplay || item.timeIn || "-"}"`,
         `"${item.status}"`,
-        `"${item.notes || "-"}"`,
       ]);
 
       const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
@@ -218,13 +218,14 @@ export default function AttendanceHistoryPage() {
                   <th className="px-4 py-3.5">Cabang</th>
                   <th className="px-4 py-3.5">Hari & Tanggal</th>
                   <th className="px-4 py-3.5">Jam Mulai - Selesai</th>
-                  <th className="px-5 py-3.5">Keterangan</th>
+                  <th className="px-4 py-3.5">Materi / Topik</th>
+                  <th className="px-5 py-3.5">Catatan</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filteredSiswa.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-5 py-8 text-center text-slate-400">
+                    <td colSpan={7} className="px-5 py-8 text-center text-slate-400">
                       Tidak ada data presensi siswa.
                     </td>
                   </tr>
@@ -246,6 +247,9 @@ export default function AttendanceHistoryPage() {
                       <td className="px-4 py-4 text-slate-600 dark:text-slate-300 font-mono">
                         {item.sessionInfo || item.timeIn || "-"}
                       </td>
+                      <td className="px-4 py-4 text-emerald-700 dark:text-emerald-400 font-medium max-w-xs truncate">
+                        {item.materi || "-"}
+                      </td>
                       <td className="px-5 py-4 text-slate-500 max-w-xs truncate">
                         {item.notes || "-"}
                       </td>
@@ -259,18 +263,16 @@ export default function AttendanceHistoryPage() {
               <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 uppercase font-semibold">
                 <tr>
                   <th className="px-5 py-3.5">Nama Tentor</th>
-                  <th className="px-4 py-3.5">Materi / Topik</th>
                   <th className="px-4 py-3.5">Cabang</th>
                   <th className="px-4 py-3.5">Tanggal</th>
                   <th className="px-4 py-3.5">Jam Masuk - Keluar</th>
-                  <th className="px-4 py-3.5">Status</th>
-                  <th className="px-5 py-3.5">Keterangan</th>
+                  <th className="px-5 py-3.5">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filteredTentor.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-5 py-8 text-center text-slate-400">
+                    <td colSpan={5} className="px-5 py-8 text-center text-slate-400">
                       Tidak ada data presensi tentor.
                     </td>
                   </tr>
@@ -281,9 +283,6 @@ export default function AttendanceHistoryPage() {
                         {item.tutorName}
                       </td>
                       <td className="px-4 py-4 text-slate-600 dark:text-slate-300">
-                        {item.sessionTopic || "-"}
-                      </td>
-                      <td className="px-4 py-4 text-slate-600 dark:text-slate-300">
                         {item.branchName || "-"}
                       </td>
                       <td className="px-4 py-4 text-slate-600 dark:text-slate-300 font-mono">
@@ -292,11 +291,8 @@ export default function AttendanceHistoryPage() {
                       <td className="px-4 py-4 text-slate-600 dark:text-slate-300 font-mono">
                         {item.timeDisplay || item.timeIn || "-"}
                       </td>
-                      <td className="px-4 py-4">
+                      <td className="px-5 py-4">
                         <span className="font-semibold">{item.status}</span>
-                      </td>
-                      <td className="px-5 py-4 text-slate-500 max-w-xs truncate">
-                        {item.notes || "-"}
                       </td>
                     </tr>
                   ))

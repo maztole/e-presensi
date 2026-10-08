@@ -15,6 +15,7 @@ import {
   AlertCircle,
   XCircle,
   HelpCircle,
+  BookOpen,
 } from "lucide-react";
 import { useThemeCMS } from "@/context/ThemeContext";
 
@@ -29,6 +30,7 @@ interface StudentAttendanceItem {
   fullDateFormatted?: string;
   timeIn: string;
   status: "HADIR" | "TIDAK_HADIR";
+  materi?: string;
   notes?: string;
   parentPhone?: string;
   tentorName?: string;
@@ -159,8 +161,18 @@ export function ViewAttendanceModal({
             </div>
           </div>
 
-          {/* Catatan Jurnal Belajar */}
-          <div className="p-5 bg-amber-50/70 dark:bg-amber-950/30 rounded-2xl border border-amber-200 dark:border-amber-800/50 space-y-2">
+          {/* Materi / Topik Pelajaran */}          {item.materi && (
+            <div className="p-5 bg-emerald-50/70 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200 dark:border-emerald-800/50 space-y-2">
+              <span className="text-xs uppercase font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                <BookOpen size={15} className="text-emerald-500" /> Materi / Topik Pelajaran
+              </span>
+              <p className="text-sm text-emerald-700 dark:text-emerald-300 leading-relaxed font-medium whitespace-pre-wrap min-h-15">
+                {item.materi}
+              </p>
+            </div>
+          )}
+
+          {/* Catatan Jurnal Belajar */}          <div className="p-5 bg-amber-50/70 dark:bg-amber-950/30 rounded-2xl border border-amber-200 dark:border-amber-800/50 space-y-2">
             <span className="text-xs uppercase font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
               <FileText size={15} /> Catatan Jurnal Belajar
             </span>

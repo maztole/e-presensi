@@ -154,9 +154,7 @@ export default function TutorSchedulePage() {
 
   const displaySchedules =
     activeTab === "MY_SCHEDULE"
-      ? mySchedules.length > 0
-        ? mySchedules
-        : schedules
+      ? mySchedules
       : schedules;
 
   const targetDayName = getDayNameFromDate(selectedDate);
@@ -293,7 +291,9 @@ export default function TutorSchedulePage() {
         <div className="text-center py-12 text-xs text-slate-500">Memuat jadwal mengajar...</div>
       ) : filteredSchedules.length === 0 ? (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-12 text-center text-slate-500 text-xs">
-          Belum ada jadwal mengajar yang cocok.
+          {activeTab === "MY_SCHEDULE"
+            ? "Tidak ada jadwal mengajar untuk Anda pada tanggal ini."
+            : "Belum ada jadwal mengajar yang cocok."}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -349,13 +349,23 @@ export default function TutorSchedulePage() {
               </div>
 
               <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  onClick={() => handleOpenValidate(item)}
-                  className="w-full py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
-                >
-                  <UserCheck size={15} />
-                  <span>Input Presensi Siswa</span>
-                </button>
+                {item.status === "BELUM_PRESENSI" ? (
+                  <button
+                    onClick={() => handleOpenValidate(item)}
+                    className="w-full py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                  >
+                    <UserCheck size={15} />
+                    <span>Input Presensi Siswa</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleOpenValidate(item)}
+                    className="w-full py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700"
+                  >
+                    <CheckCircle2 size={15} className="text-emerald-500" />
+                    <span>Sudah Diinput (Edit)</span>
+                  </button>
+                )}
               </div>
             </div>
           ))}

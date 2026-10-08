@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Check, Clock, UserCheck, GraduationCap, Building2, Calendar, FileText } from "lucide-react";
+import { X, Check, Clock, UserCheck, GraduationCap, Building2, Calendar, FileText, BookOpen } from "lucide-react";
 import { useThemeCMS } from "@/context/ThemeContext";
 
 export interface ScheduledItemToValidate {
@@ -21,6 +21,7 @@ export interface ScheduledItemToValidate {
   date: string;
   status: string;
   notes?: string;
+  materi?: string; // Materi/topik pelajaran
   isValidated: boolean;
   parentPhone?: string;
   parentName?: string;
@@ -46,6 +47,7 @@ export function ValidateScheduleModal({
   const [startTime, setStartTime] = useState("15:30");
   const [endTime, setEndTime] = useState("17:00");
   const [status, setStatus] = useState<"HADIR" | "TIDAK_HADIR">("HADIR");
+  const [materi, setMateri] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -53,6 +55,7 @@ export function ValidateScheduleModal({
     if (isOpen && item) {
       fetchTutors();
       setStatus(item.status === "TIDAK_HADIR" ? "TIDAK_HADIR" : "HADIR");
+      setMateri(item.materi || "");
       setNotes(item.notes && item.notes !== "Menunggu validasi tentor" ? item.notes : "");
       setTentorNameInput(item.tentorName && item.tentorName !== "-" ? item.tentorName : "");
       setSelectedTutorId(item.tutorId || "");
@@ -116,6 +119,7 @@ export function ValidateScheduleModal({
             startTime,
             endTime,
             sessionInfo: `${startTime} - ${endTime}`,
+            materi: materi || null,
             notes: notes || `Divalidasi dari jadwal (${status})`,
             tentorName: finalTentorName,
             tutorId: finalTutorId,
@@ -132,6 +136,7 @@ export function ValidateScheduleModal({
             endTime,
             sessionInfo: `${startTime} - ${endTime}`,
             status,
+            materi: materi || null,
             notes: notes || `Divalidasi dari jadwal (${status})`,
           };
 
@@ -282,14 +287,28 @@ export function ValidateScheduleModal({
             </select>
           </div>
 
+          {/* Materi / Topik Pelajaran */}
+          <div className="space-y-1">
+            <label className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1">
+              <BookOpen size={13} className="text-emerald-500" /> Materi / Topik Pelajaran
+            </label>
+            <input
+              type="text"
+              placeholder="Contoh: Matematika - Persamaan Kuadrat Bab 3"
+              value={materi}
+              onChange={(e) => setMateri(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+            />
+          </div>
+
           {/* Catatan / Keterangan */}
           <div className="space-y-1">
             <label className="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1">
-              <FileText size={13} className="text-slate-400" /> Catatan / Jurnal Les (Opsional)
+              <FileText size={13} className="text-slate-400" /> Catatan / Keterangan (Opsional)
             </label>
             <textarea
               rows={2}
-              placeholder="Contoh: Belajar Bab 4 Matematika Trigonometri, siswa aktif..."
+              placeholder="Contoh: Siswa aktif, latihan soal selesai 5 nomor..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"

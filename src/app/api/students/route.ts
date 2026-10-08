@@ -119,6 +119,21 @@ export async function POST(req: NextRequest) {
       include: { branch: true },
     });
 
+    // Buat notifikasi otomatis — akan muncul di bell icon admin/tutor
+    try {
+      await prisma.notification.create({
+        data: {
+          type: "info",
+          title: "Siswa Baru Ditambahkan",
+          message: `${name} (${gradeLevel || "Tanpa Jenjang"}) telah ditambahkan${newStudent.branch ? ` di ${newStudent.branch.name}` : ""}.`,
+          isRead: false,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        },
+      });
+    } catch {
+      // jangan gagalkan request jika notifikasi gagal
+    }
+
     return NextResponse.json({ success: true, data: newStudent }, { status: 201 });
   } catch (error: any) {
     console.error("[POST /api/students] Error:", error?.message || error);

@@ -25,6 +25,7 @@ export interface AttendanceDataToEdit {
   endTime?: string;
   sessionInfo?: string;
   status: "HADIR" | "TIDAK_HADIR";
+  materi?: string;
   notes?: string;
   tentorName?: string;
 }
@@ -51,6 +52,7 @@ export function ManualAttendanceModal({
   const [startTime, setStartTime] = useState("15:30");
   const [endTime, setEndTime] = useState("17:00");
   const [status, setStatus] = useState<"HADIR" | "TIDAK_HADIR">("HADIR");
+  const [materi, setMateri] = useState("");
   const [notes, setNotes] = useState("");
   const [attendanceDate, setAttendanceDate] = useState(
     new Date().toISOString().split("T")[0]
@@ -69,6 +71,7 @@ export function ManualAttendanceModal({
         setSelectedStudentId(initialData.studentId || "");
         setAttendanceDate(initialData.date || new Date().toISOString().split("T")[0]);
         setStatus(initialData.status || "HADIR");
+        setMateri(initialData.materi === "-" ? "" : initialData.materi || "");
         setNotes(initialData.notes === "-" ? "" : initialData.notes || "");
         setTentorNameInput(initialData.tentorName === "-" ? "" : initialData.tentorName || "");
 
@@ -161,6 +164,7 @@ export function ManualAttendanceModal({
         endTime,
         sessionInfo: `${startTime} - ${endTime}`,
         status,
+        materi: materi || null,
         notes,
         tentorName: tentorNameInput || "Kak Admin",
       };
@@ -354,16 +358,30 @@ export function ManualAttendanceModal({
               </div>
             </div>
 
-            {/* 5. Catatan */}
+            {/* 5. Materi / Topik Pelajaran */}
+            <div>
+              <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-2 text-sm">
+                Materi / Topik Pelajaran
+              </label>
+              <input
+                type="text"
+                value={materi}
+                onChange={(e) => setMateri(e.target.value)}
+                placeholder="Contoh: Bab 3 Matriks & Persamaan Kuadrat"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* 6. Catatan */}
             <div>
               <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-2 text-sm">
                 Catatan Jurnal Belajar
               </label>
               <textarea
-                rows={4}
+                rows={3}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Contoh: Belajar Bab 3 Matriks, aktif bertanya dan menyelesaikan soal latihan dengan baik..."
+                placeholder="Contoh: Aktif bertanya dan menyelesaikan soal latihan dengan baik..."
                 className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed"
               />
             </div>

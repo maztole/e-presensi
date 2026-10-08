@@ -19,6 +19,8 @@ export async function GET(req: NextRequest) {
     let month = now.getMonth();
     let dayDate = now.getDate();
 
+    let dateWhere: any = {};
+
     if (date && date.includes("-")) {
       const [y, m, d] = date.split("-").map(Number);
       year = y;
@@ -27,16 +29,16 @@ export async function GET(req: NextRequest) {
       const targetDate = new Date(y, m - 1, d, 12, 0, 0);
       dayName = dayNames[targetDate.getDay()];
       targetDateStr = date;
-    }
 
-    const startOfDay = new Date(year, month, dayDate, 0, 0, 0, 0);
-    const endOfDay = new Date(year, month, dayDate, 23, 59, 59, 999);
-    const dateWhere = {
-      date: {
-        gte: startOfDay,
-        lte: endOfDay,
-      },
-    };
+      const startOfDay = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+      const endOfDay = new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999));
+      dateWhere = {
+        date: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      };
+    }
 
     // 1. Fetch all attendance logs for the target date
     const attendances = await prisma.attendance.findMany({
@@ -85,19 +87,20 @@ export async function GET(req: NextRequest) {
         fullDateFormatted: `${dayStr}, ${dateFormatted}`,
         timeIn: a.timeIn ? new Date(a.timeIn).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) : "-",
         status: a.status,
+        materi: (a as any).materi || "",
         notes: a.notes || "-",
         isValidated: true,
       };
     });
 
-    // 2. Fetch active schedules - LOGIC SEDERHANA: jika days mengandung "Sabtu" langsung ambil
+    // 2. Fetch active schedules - filter berdasarkan hari yang tampil (bukan hardcode Sabtu)
     // HANYA ambil jadwal yang tanggal pembuatannya (createdAt) <= targetDate (tidak muncul di masa lalu sebelum dibuat)
     const endOfTargetDay = new Date(year, month, dayDate, 23, 59, 59, 999);
     const activeSchedules = await prisma.studentSchedule.findMany({
       where: {
         isActive: true,
         createdAt: { lte: endOfTargetDay },
-        days: { contains: "Sabtu", mode: "insensitive" },
+        days: { contains: dayName, mode: "insensitive" },
       },
       include: {
         student: {
@@ -109,7 +112,7 @@ export async function GET(req: NextRequest) {
     });
 
     // Map each scheduled student to see if they are validated or still pending
-    // Cek berdasarkan studentId + tanggal hari ini agar jadwal baru/edit hari Sabtu muncul di tab BELUM_VALIDASI
+    // Cek berdasarkan studentId + tanggal target agar jadwal baru/edit muncul di tab BELUM_VALIDASI
     const scheduledItems = activeSchedules.map((sch) => {
       const existingAtt = validatedAttendances.find(
         (a) => a.studentId === sch.studentId && a.date === targetDateStr
@@ -133,6 +136,7 @@ export async function GET(req: NextRequest) {
         date: targetDateStr,
         dayName,
         status: existingAtt ? existingAtt.status : "BELUM_VALIDASI",
+        materi: existingAtt ? (existingAtt.materi || "") : "",
         notes: existingAtt ? existingAtt.notes : "Menunggu validasi tentor",
         isValidated: !!existingAtt,
         timeIn: existingAtt ? existingAtt.timeIn : "-",
@@ -154,29 +158,38 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { studentId, studentName, startTime, endTime, sessionInfo, status, notes, date, tentorName, tutorId, branchId } = body;
+    const { studentId, studentName, startTime, endTime, sessionInfo, status, notes, date, tentorName, tutorId, branchId, materi } = body;
 
     let targetStudentId = studentId;
+    let targetStudent = null;
 
-    if (!targetStudentId && studentName) {
-      const existing = await prisma.student.findFirst({
-        where: { name: { contains: studentName, mode: "insensitive" } },
-      });
-      if (existing) targetStudentId = existing.id;
+    if (targetStudentId) {
+      targetStudent = await prisma.student.findUnique({ where: { id: targetStudentId } });
     }
 
-    if (!targetStudentId) {
-      const newStd = await prisma.student.create({
+    if (!targetStudent && studentName) {
+      targetStudent = await prisma.student.findFirst({
+        where: { name: { contains: studentName, mode: "insensitive" } },
+      });
+    }
+
+    if (!targetStudent) {
+      targetStudent = await prisma.student.create({
         data: {
           nis: `NIS-${Date.now().toString().slice(-5)}`,
           name: studentName || "Siswa Baru",
         },
       });
-      targetStudentId = newStd.id;
+    }
+    targetStudentId = targetStudent.id;
+
+    // Resolve tutorId: verify existence or lookup/create by name
+    let resolvedTutorId: string | null = null;
+    if (tutorId) {
+      const tutorExists = await prisma.tutor.findUnique({ where: { id: tutorId } });
+      if (tutorExists) resolvedTutorId = tutorExists.id;
     }
 
-    // Resolve tutorId: by id or by name lookup
-    let resolvedTutorId: string | null = tutorId || null;
     if (!resolvedTutorId && tentorName && tentorName !== "-") {
       let tutor = await prisma.tutor.findFirst({
         where: { name: { contains: tentorName, mode: "insensitive" } },
@@ -193,9 +206,13 @@ export async function POST(req: NextRequest) {
       resolvedTutorId = tutor.id;
     }
 
-    // Resolve student and branchId: use provided or fall back to student's branch
-    const targetStudent = targetStudentId ? await prisma.student.findUnique({ where: { id: targetStudentId } }) : null;
-    let resolvedBranchId: string | null = branchId || targetStudent?.branchId || null;
+    // Resolve branchId: verify existence or fallback to student's branch
+    let resolvedBranchId: string | null = null;
+    const candidateBranchId = branchId || targetStudent?.branchId;
+    if (candidateBranchId) {
+      const branchExists = await prisma.branch.findUnique({ where: { id: candidateBranchId } });
+      if (branchExists) resolvedBranchId = branchExists.id;
+    }
 
     const studentGrade = targetStudent?.gradeLevel || "";
     let normGrade = "SMA";
@@ -209,9 +226,9 @@ export async function POST(req: NextRequest) {
 
     if (date && typeof date === "string" && date.includes("-")) {
       const [y, m, d] = date.split("-").map(Number);
-      attendanceDate = new Date(y, m - 1, d, 12, 0, 0);
-      startOfDay = new Date(y, m - 1, d, 0, 0, 0, 0);
-      endOfDay = new Date(y, m - 1, d, 23, 59, 59, 999);
+      attendanceDate = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+      startOfDay = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+      endOfDay = new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999));
     } else {
       startOfDay.setHours(0, 0, 0, 0);
       endOfDay.setHours(23, 59, 59, 999);
@@ -229,19 +246,100 @@ export async function POST(req: NextRequest) {
       ? `${startTime} - ${endTime}`
       : sessionInfo || "";
 
-    const newAttendance = await prisma.attendance.create({
-      data: {
+    let validStatus: any = "HADIR";
+    const upperStatus = status?.toString().toUpperCase();
+    if (["HADIR", "TIDAK_HADIR", "IZIN", "ALPA", "SAKIT"].includes(upperStatus)) {
+      validStatus = upperStatus;
+    }
+
+    // Check if attendance already exists on target day for this student
+    const existingAtt = await prisma.attendance.findFirst({
+      where: {
         studentId: targetStudentId,
-        branchId: resolvedBranchId,
-        tutorId: resolvedTutorId,
-        date: attendanceDate,
-        timeIn: calculatedTimeIn,
-        status: (status?.toUpperCase() === "TIDAK_HADIR" ? "TIDAK_HADIR" : status?.toUpperCase()) as any,
-        sessionInfo: displaySession,
-        notes: notes || null,
-        recordedBy: tentorName || null,
+        date: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
       },
     });
+
+    let newAttendance;
+    try {
+      if (existingAtt) {
+        newAttendance = await prisma.attendance.update({
+          where: { id: existingAtt.id },
+          data: {
+            branchId: resolvedBranchId,
+            tutorId: resolvedTutorId,
+            status: validStatus,
+            sessionInfo: displaySession,
+            materi: materi !== undefined ? (materi || null) : existingAtt.materi,
+            notes: notes !== undefined ? (notes || null) : existingAtt.notes,
+            recordedBy: tentorName || null,
+          },
+        });
+      } else {
+        newAttendance = await prisma.attendance.create({
+          data: {
+            studentId: targetStudentId,
+            branchId: resolvedBranchId,
+            tutorId: resolvedTutorId,
+            date: attendanceDate,
+            timeIn: calculatedTimeIn,
+            status: validStatus,
+            sessionInfo: displaySession,
+            materi: materi || null,
+            notes: notes || null,
+            recordedBy: tentorName || null,
+          },
+        });
+      }
+    } catch (createErr: any) {
+      if (createErr?.message?.includes("Unknown argument `materi`")) {
+        // Fallback for cached Prisma Client in Next.js dev server memory
+        if (existingAtt) {
+          newAttendance = await prisma.attendance.update({
+            where: { id: existingAtt.id },
+            data: {
+              branchId: resolvedBranchId,
+              tutorId: resolvedTutorId,
+              status: validStatus,
+              sessionInfo: displaySession,
+              notes: notes !== undefined ? (notes || null) : existingAtt.notes,
+              recordedBy: tentorName || null,
+            },
+          });
+        } else {
+          newAttendance = await prisma.attendance.create({
+            data: {
+              studentId: targetStudentId,
+              branchId: resolvedBranchId,
+              tutorId: resolvedTutorId,
+              date: attendanceDate,
+              timeIn: calculatedTimeIn,
+              status: validStatus,
+              sessionInfo: displaySession,
+              notes: notes || null,
+              recordedBy: tentorName || null,
+            },
+          });
+        }
+        if (materi && newAttendance?.id) {
+          try {
+            await prisma.$executeRawUnsafe(
+              `UPDATE "attendances" SET "materi" = $1 WHERE "id" = $2`,
+              materi,
+              newAttendance.id
+            );
+            (newAttendance as any).materi = materi;
+          } catch (e) {
+            console.error("[Raw Materi Update Error]:", e);
+          }
+        }
+      } else {
+        throw createErr;
+      }
+    }
 
     // Otomatis buat presensi tentor (60 Menit) - tentor tetap dapat honor baik siswa HADIR maupun ALPA
     // Cek duplikat berdasarkan (tutorId + date + branchId + gradeLevel):
@@ -305,23 +403,33 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, studentId, studentName, startTime, endTime, sessionInfo, status, notes, date, tentorName, tutorId, branchId } = body;
+    const { id, studentId, studentName, startTime, endTime, sessionInfo, status, notes, date, tentorName, tutorId, branchId, materi } = body;
 
     if (!id) {
       return NextResponse.json({ success: false, error: "ID presensi dibutuhkan" }, { status: 400 });
     }
 
     let targetStudentId = studentId;
-    if (!targetStudentId && studentName) {
-      const existing = await prisma.student.findFirst({
+    let targetStudent = null;
+    if (targetStudentId) {
+      targetStudent = await prisma.student.findUnique({ where: { id: targetStudentId } });
+    }
+    if (!targetStudent && studentName) {
+      targetStudent = await prisma.student.findFirst({
         where: { name: { contains: studentName, mode: "insensitive" } },
       });
-      if (existing) targetStudentId = existing.id;
+      if (targetStudent) targetStudentId = targetStudent.id;
     }
 
-    // Resolve tutorId: by id or by name lookup
-    let resolvedTutorId: string | null | undefined = tutorId !== undefined ? (tutorId || null) : undefined;
-    if ((!resolvedTutorId || resolvedTutorId === null) && tentorName && tentorName !== "-") {
+    // Resolve tutorId: verify existence or lookup/create by name
+    let resolvedTutorId: string | null | undefined = undefined;
+    if (tutorId) {
+      const tutorExists = await prisma.tutor.findUnique({ where: { id: tutorId } });
+      if (tutorExists) resolvedTutorId = tutorExists.id;
+      else resolvedTutorId = null;
+    }
+
+    if ((resolvedTutorId === undefined || resolvedTutorId === null) && tentorName && tentorName !== "-") {
       let tutor = await prisma.tutor.findFirst({
         where: { name: { contains: tentorName, mode: "insensitive" } },
       });
@@ -337,9 +445,14 @@ export async function PUT(req: NextRequest) {
       resolvedTutorId = tutor.id;
     }
 
-    // Resolve student and branchId
-    const targetStudent = targetStudentId ? await prisma.student.findUnique({ where: { id: targetStudentId } }) : null;
-    let resolvedBranchId: string | null | undefined = branchId !== undefined ? branchId : (targetStudent?.branchId || undefined);
+    // Resolve branchId: verify existence
+    let resolvedBranchId: string | null | undefined = undefined;
+    const candidateBranchId = branchId || targetStudent?.branchId;
+    if (candidateBranchId) {
+      const branchExists = await prisma.branch.findUnique({ where: { id: candidateBranchId } });
+      if (branchExists) resolvedBranchId = branchExists.id;
+      else resolvedBranchId = null;
+    }
 
     const studentGrade = targetStudent?.gradeLevel || "";
     let normGrade = "SMA";
@@ -348,14 +461,9 @@ export async function PUT(req: NextRequest) {
     else if (studentGrade.toUpperCase().includes("SMA")) normGrade = "SMA";
 
     let attendanceDate: Date | undefined = undefined;
-    let startOfDay = new Date();
-    let endOfDay = new Date();
-
     if (date && typeof date === "string" && date.includes("-")) {
       const [y, m, d] = date.split("-").map(Number);
-      attendanceDate = new Date(y, m - 1, d, 12, 0, 0);
-      startOfDay = new Date(y, m - 1, d, 0, 0, 0, 0);
-      endOfDay = new Date(y, m - 1, d, 23, 59, 59, 999);
+      attendanceDate = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
     }
 
     let calculatedTimeIn: Date | undefined = undefined;
@@ -371,20 +479,104 @@ export async function PUT(req: NextRequest) {
       ? `${startTime} - ${endTime}`
       : sessionInfo;
 
-    const updated = await prisma.attendance.update({
-      where: { id },
-      data: {
-        ...(targetStudentId ? { studentId: targetStudentId } : {}),
-        ...(resolvedBranchId !== undefined ? { branchId: resolvedBranchId } : {}),
-        ...(resolvedTutorId !== undefined ? { tutorId: resolvedTutorId } : {}),
-        ...(attendanceDate ? { date: attendanceDate } : {}),
-        ...(calculatedTimeIn ? { timeIn: calculatedTimeIn } : {}),
-        ...(status ? { status: (status.toUpperCase() === "TIDAK_HADIR" ? "TIDAK_HADIR" : status.toUpperCase()) as any } : {}),
-        ...(displaySession ? { sessionInfo: displaySession } : {}),
-        notes: notes !== undefined ? notes : undefined,
-        recordedBy: tentorName !== undefined ? tentorName : undefined,
-      },
-    });
+    let validStatus: any = undefined;
+    if (status) {
+      const upperStatus = status.toString().toUpperCase();
+      if (["HADIR", "TIDAK_HADIR", "IZIN", "ALPA", "SAKIT"].includes(upperStatus)) {
+        validStatus = upperStatus;
+      } else {
+        validStatus = "HADIR";
+      }
+    }
+
+    // Check if updating an existing non-sch record or sch- item
+    const recordExists = id && !id.startsWith("sch-") ? await prisma.attendance.findUnique({ where: { id } }) : null;
+
+    let updated;
+    try {
+      if (recordExists) {
+        updated = await prisma.attendance.update({
+          where: { id },
+          data: {
+            ...(targetStudentId ? { studentId: targetStudentId } : {}),
+            ...(resolvedBranchId !== undefined ? { branchId: resolvedBranchId } : {}),
+            ...(resolvedTutorId !== undefined ? { tutorId: resolvedTutorId } : {}),
+            ...(attendanceDate ? { date: attendanceDate } : {}),
+            ...(calculatedTimeIn ? { timeIn: calculatedTimeIn } : {}),
+            ...(validStatus ? { status: validStatus } : {}),
+            ...(displaySession ? { sessionInfo: displaySession } : {}),
+            materi: materi !== undefined ? (materi || null) : undefined,
+            notes: notes !== undefined ? (notes || null) : undefined,
+            recordedBy: tentorName !== undefined ? tentorName : undefined,
+          },
+        });
+      } else {
+        // Fallback create if PUT called on schedule item
+        const finalStudentId = targetStudentId || studentId;
+        updated = await prisma.attendance.create({
+          data: {
+            studentId: finalStudentId,
+            branchId: resolvedBranchId || null,
+            tutorId: resolvedTutorId || null,
+            date: attendanceDate || new Date(),
+            timeIn: calculatedTimeIn || new Date(),
+            status: validStatus || "HADIR",
+            sessionInfo: displaySession || "",
+            materi: materi || null,
+            notes: notes || null,
+            recordedBy: tentorName || null,
+          },
+        });
+      }
+    } catch (updateErr: any) {
+      if (updateErr?.message?.includes("Unknown argument `materi`")) {
+        if (recordExists) {
+          updated = await prisma.attendance.update({
+            where: { id },
+            data: {
+              ...(targetStudentId ? { studentId: targetStudentId } : {}),
+              ...(resolvedBranchId !== undefined ? { branchId: resolvedBranchId } : {}),
+              ...(resolvedTutorId !== undefined ? { tutorId: resolvedTutorId } : {}),
+              ...(attendanceDate ? { date: attendanceDate } : {}),
+              ...(calculatedTimeIn ? { timeIn: calculatedTimeIn } : {}),
+              ...(validStatus ? { status: validStatus } : {}),
+              ...(displaySession ? { sessionInfo: displaySession } : {}),
+              notes: notes !== undefined ? (notes || null) : undefined,
+              recordedBy: tentorName !== undefined ? tentorName : undefined,
+            },
+          });
+        } else {
+          const finalStudentId = targetStudentId || studentId;
+          updated = await prisma.attendance.create({
+            data: {
+              studentId: finalStudentId,
+              branchId: resolvedBranchId || null,
+              tutorId: resolvedTutorId || null,
+              date: attendanceDate || new Date(),
+              timeIn: calculatedTimeIn || new Date(),
+              status: validStatus || "HADIR",
+              sessionInfo: displaySession || "",
+              notes: notes || null,
+              recordedBy: tentorName || null,
+            },
+          });
+        }
+        if (materi && updated?.id) {
+          try {
+            await prisma.$executeRawUnsafe(
+              `UPDATE "attendances" SET "materi" = $1 WHERE "id" = $2`,
+              materi,
+              updated.id
+            );
+            (updated as any).materi = materi;
+          } catch (e) {
+            console.error("[Raw Materi Update Error]:", e);
+          }
+        }
+      } else {
+        throw updateErr;
+      }
+    }
 
     // Otomatis buat presensi tentor (60 Menit) - tentor tetap dapat honor baik siswa HADIR maupun ALPA
     // Cek duplikat berdasarkan (tutorId + date + branchId + gradeLevel + timeIn):

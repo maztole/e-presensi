@@ -44,6 +44,10 @@ export default function LoginPage() {
 
       // Save session info
       localStorage.setItem("user_session", JSON.stringify(data.data));
+      // Simpan ID admin untuk fitur ganti password di Pengaturan
+      if (data.data?.id) {
+        localStorage.setItem("epresensi_admin_id", data.data.id);
+      }
       setSuccess(true);
 
       setTimeout(() => {

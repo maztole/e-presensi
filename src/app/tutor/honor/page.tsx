@@ -33,6 +33,7 @@ export default function TutorHonorPage() {
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState<HonorRecord[]>([]);
   const [tutorUser, setTutorUser] = useState<any>(null);
+  const [userLoaded, setUserLoaded] = useState(false);
 
   // Summary Metrics
   const [totalSessions, setTotalSessions] = useState(0);
@@ -45,15 +46,27 @@ export default function TutorHonorPage() {
       if (sess) {
         setTutorUser(JSON.parse(sess));
       }
-    } catch {}
+    } catch {} finally {
+      setUserLoaded(true);
+    }
   }, []);
 
   useEffect(() => {
+    if (!userLoaded) return;
+
     async function fetchTutorHonor() {
       setLoading(true);
       try {
+        // Kirim tutorName ke backend untuk filter ketat
+        const currentTutorName = tutorUser?.name?.trim() || "";
+        const queryParams = new URLSearchParams();
+        queryParams.set("month", selectedMonth);
+        if (currentTutorName) {
+          queryParams.set("tutorName", currentTutorName);
+        }
+
         const res = await fetch(
-          `/api/tutor-attendances?month=${selectedMonth}`,
+          `/api/tutor-attendances?${queryParams.toString()}`,
           { cache: "no-store" }
         );
         const data = await res.json();
@@ -61,17 +74,15 @@ export default function TutorHonorPage() {
         if (data.success && Array.isArray(data.data)) {
           let list = data.data;
 
-          // Filter log mengajar milik tentor login jika ada
-          if (tutorUser?.name) {
-            const nameLower = tutorUser.name.toLowerCase();
-            const filtered = list.filter(
+          // Selalu filter ketat hanya milik tentor login
+          if (currentTutorName) {
+            const nameLower = currentTutorName.toLowerCase();
+            list = list.filter(
               (a: any) =>
-                (a.tutorName && a.tutorName.toLowerCase().includes(nameLower)) ||
-                a.tutorId === tutorUser.id
+                a.tutorName && a.tutorName.toLowerCase().includes(nameLower)
             );
-            if (filtered.length > 0) {
-              list = filtered;
-            }
+          } else {
+            list = [];
           }
 
           // Dynamic rate config fallback
@@ -111,16 +122,25 @@ export default function TutorHonorPage() {
           setTotalSessions(calculatedSessions);
           setTotalHours(calculatedHours);
           setTotalHonorAmount(calculatedHonor);
+        } else {
+          setRecords([]);
+          setTotalSessions(0);
+          setTotalHours(0);
+          setTotalHonorAmount(0);
         }
       } catch (e) {
         console.error("Gagal memuat rekap honor tentor:", e);
+        setRecords([]);
+        setTotalSessions(0);
+        setTotalHours(0);
+        setTotalHonorAmount(0);
       } finally {
         setLoading(false);
       }
     }
 
     fetchTutorHonor();
-  }, [selectedMonth, tutorUser]);
+  }, [selectedMonth, tutorUser, userLoaded]);
 
   return (
     <div className="space-y-6">

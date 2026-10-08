@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { useThemeCMS } from "@/context/ThemeContext";
 import {
-  MapPin,
   Building2,
   Plus,
   Search,
@@ -241,23 +240,13 @@ export default function BranchManagementPage() {
                       </span>
                     </td>
                     <td className="px-4 py-4 font-bold text-slate-800 dark:text-slate-100">
-                      <div className="flex items-center gap-2">
-                        <MapPin size={15} className="text-rose-500 shrink-0" />
-                        <span>{b.name}</span>
-                      </div>
+                      {b.name}
                     </td>
                     <td className="px-4 py-4 text-slate-600 dark:text-slate-300 max-w-xs truncate">
                       {b.address || "-"}
                     </td>
                     <td className="px-4 py-4 font-mono text-slate-600 dark:text-slate-300">
-                      {b.phone ? (
-                        <div className="flex items-center gap-1.5">
-                          <Phone size={13} className="text-emerald-500" />
-                          <span>{b.phone}</span>
-                        </div>
-                      ) : (
-                        "-"
-                      )}
+                      {b.phone || "-"}
                     </td>
                     <td className="px-4 py-4">
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[11px] font-bold border border-blue-200 dark:border-blue-800">

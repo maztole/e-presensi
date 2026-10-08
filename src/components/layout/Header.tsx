@@ -18,7 +18,10 @@ import {
 import { useRouter } from "next/navigation";
 
 interface HeaderProps {
+  mobileOpen?: boolean;
   setMobileOpen: (open: boolean) => void;
+  collapsed?: boolean;
+  setCollapsed?: (collapsed: boolean | ((prev: boolean) => boolean)) => void;
   onOpenThemeModal?: () => void;
   onOpenManualAttendanceModal?: () => void;
   onOpenAddUserModal?: () => void;
@@ -28,47 +31,36 @@ interface NotificationItem {
   id: string;
   title: string;
   message: string;
-  time: string;
+  time?: string;
+  createdAt?: string;
   isRead: boolean;
   type: "attendance" | "warning" | "info";
 }
 
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: "notif-1",
-    title: "Presensi Siswa Masuk",
-    message: "Ahmad Fauzi (Kelas 12 SMA) telah tercatat Hadir di Cabang Pusat.",
-    time: "10 menit lalu",
-    isRead: false,
-    type: "attendance",
-  },
-  {
-    id: "notif-2",
-    title: "Presensi Tentor Terlambat",
-    message: "Budi Santoso, S.Pd baru melakukan presensi pukul 16.15 (Jadwal: 16.00).",
-    time: "35 menit lalu",
-    isRead: false,
-    type: "warning",
-  },
-  {
-    id: "notif-3",
-    title: "Rekap Bulanan Siap",
-    message: "Laporan presensi dan honor tentor bulan ini sudah dapat diunduh.",
-    time: "2 jam lalu",
-    isRead: true,
-    type: "info",
-  },
-];
+function formatTimeAgo(dateStr?: string): string {
+  if (!dateStr) return "";
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "Baru saja";
+  if (minutes < 60) return `${minutes} menit lalu`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} jam lalu`;
+  const days = Math.floor(hours / 24);
+  return `${days} hari lalu`;
+}
 
 export function Header({
+  mobileOpen,
   setMobileOpen,
+  collapsed,
+  setCollapsed,
   onOpenThemeModal,
 }: HeaderProps) {
   const router = useRouter();
   const [time, setTime] = useState<string>("");
   const [date, setDate] = useState<string>("");
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const notifRef = useRef<HTMLDivElement>(null);
 
   const [user, setUser] = useState({ name: "Admin Utama", email: "admin@lesku.id" });
@@ -207,14 +199,22 @@ export function Header({
 
   return (
     <header className="sticky top-0 z-20 h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 md:px-6 flex items-center justify-between gap-4 transition-colors">
-      {/* Left: Mobile Toggle */}
+      {/* Left: Sidenav Toggle Button (Far Left) */}
       <div className="flex items-center gap-3">
+        {/* Toggle button for both Mobile and Desktop */}
         <button
-          onClick={() => setMobileOpen(true)}
-          className="md:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          aria-label="Open sidebar"
+          onClick={() => {
+            if (window.innerWidth < 768) {
+              setMobileOpen(!mobileOpen);
+            } else if (setCollapsed) {
+              setCollapsed((prev) => !prev);
+            }
+          }}
+          className="p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-400 dark:hover:border-slate-600 transition-all shadow-xs cursor-pointer active:scale-95"
+          aria-label="Toggle Navigation Sidebar"
+          title="Buka / Tutup Sidebar"
         >
-          <Menu size={20} />
+          <Menu size={20} className="stroke-[2.2]" />
         </button>
       </div>
 
@@ -321,7 +321,7 @@ export function Header({
                             {item.title}
                           </p>
                           <span className="text-[10px] text-slate-400 shrink-0">
-                            {item.time}
+                            {item.time || formatTimeAgo(item.createdAt)}
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-2 mt-0.5">

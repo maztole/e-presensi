@@ -15,8 +15,8 @@ import {
   GraduationCap,
   Building2,
   Percent,
-  Sparkles,
 } from "lucide-react";
+
 
 export default function AdminDashboardPage() {
   const { settings, themeColors } = useThemeCMS();
@@ -71,10 +71,22 @@ export default function AdminDashboardPage() {
       <div
         className={`p-8 sm:p-10 md:p-12 rounded-3xl bg-linear-to-r ${themeColors.gradient} text-white shadow-xl ${themeColors.shadow} relative overflow-hidden transition-all duration-300 flex flex-col justify-center`}
       >
-        {/* Background Hiasan */}
-        <div className="absolute -right-6 -bottom-10 opacity-15 pointer-events-none flex items-center pr-6">
-          <Sparkles className="w-80 h-80 text-white" />
-        </div>
+        {/* Background Batik PNG Berulang Setengah Banner - Gradasi Tebal ke Tipis */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-y-0 right-0 w-1/2 pointer-events-none select-none"
+          style={{
+            backgroundImage: "url(/images/batik.png)",
+            backgroundRepeat: "repeat",
+            backgroundSize: "140px auto",
+            backgroundPosition: "center",
+            opacity: 0.45,
+            WebkitMaskImage:
+              "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.7) 20%, rgba(0,0,0,1) 45%)",
+            maskImage:
+              "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.7) 20%, rgba(0,0,0,1) 45%)",
+          }}
+        />
         <div className="absolute right-1/3 top-0 opacity-10 pointer-events-none">
           <div className="w-64 h-64 rounded-full bg-white/20 blur-3xl"></div>
         </div>
