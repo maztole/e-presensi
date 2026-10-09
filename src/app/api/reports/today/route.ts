@@ -112,17 +112,17 @@ export async function GET() {
       TIDAK_HADIR: 0,
     };
 
-    studentAttendances.forEach((a) => {
+    studentAttendances.forEach((a: any) => {
       if (statusCounts[a.status] !== undefined) statusCounts[a.status]++;
     });
 
-    tutorAttendances.forEach((ta) => {
+    tutorAttendances.forEach((ta: any) => {
       if (statusCounts[ta.status] !== undefined) statusCounts[ta.status]++;
     });
 
     // Recent Activity List (merge student & tutor recent attendances)
     const recentActivities = [
-      ...studentAttendances.map((sa) => {
+      ...studentAttendances.map((sa: any) => {
         const grade = sa.student.gradeLevel || "Siswa";
         const branchName = sa.branch?.name || sa.student?.branch?.name || "";
         return {
@@ -135,7 +135,7 @@ export async function GET() {
           rawDate: sa.timeIn,
         };
       }),
-      ...tutorAttendances.map((ta) => {
+      ...tutorAttendances.map((ta: any) => {
         const grade = ta.gradeLevel ? `Jenjang ${ta.gradeLevel}` : "Jenjang -";
         const branchName = ta.branch?.name || "";
         return {
@@ -153,8 +153,8 @@ export async function GET() {
     // Absence List (Tidak Hadir)
     const absenceList = [
       ...studentAttendances
-        .filter((sa) => sa.status === "IZIN" || sa.status === "ALPA" || sa.status === "SAKIT")
-        .map((sa) => ({
+        .filter((sa: any) => sa.status === "IZIN" || sa.status === "ALPA" || sa.status === "SAKIT")
+        .map((sa: any) => ({
           id: sa.id,
           name: sa.student.name,
           role: "siswa" as const,
@@ -164,8 +164,8 @@ export async function GET() {
           parentPhone: sa.student.parentPhone || undefined,
         })),
       ...tutorAttendances
-        .filter((ta) => ta.status === "IZIN" || ta.status === "ALPA" || ta.status === "SAKIT")
-        .map((ta) => ({
+        .filter((ta: any) => ta.status === "IZIN" || ta.status === "ALPA" || ta.status === "SAKIT")
+        .map((ta: any) => ({
           id: ta.id,
           name: ta.tutor.name,
           role: "tutor" as const,
@@ -177,9 +177,9 @@ export async function GET() {
     ];
 
     // Schedules formatted for TodaySchedule component
-    const formattedSchedules = activeSchedules.map((sch) => {
+    const formattedSchedules = activeSchedules.map((sch: any) => {
       // Calculate attendance for this schedule's student/tutor today
-      const attendedCount = studentAttendances.filter((sa) => sa.studentId === sch.studentId && sa.status === "HADIR").length;
+      const attendedCount = studentAttendances.filter((sa: any) => sa.studentId === sch.studentId && sa.status === "HADIR").length;
       return {
         id: sch.id,
         className: `${sch.student.name} (${sch.student.gradeLevel || "Siswa"})`,

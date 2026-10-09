@@ -8,6 +8,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const date = searchParams.get("date");
+    const monthParam = searchParams.get("month");
     const status = searchParams.get("status");
 
     const now = new Date();
@@ -21,7 +22,21 @@ export async function GET(req: NextRequest) {
 
     let dateWhere: any = {};
 
-    if (date && date.includes("-")) {
+    if (monthParam && monthParam.includes("-")) {
+      const [y, m] = monthParam.split("-").map(Number);
+      year = y;
+      month = m - 1;
+      const startOfMonth = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0, 0));
+      const endOfMonth = new Date(Date.UTC(y, m - 1, new Date(y, m, 0).getDate(), 23, 59, 59, 999));
+      dateWhere = {
+        date: {
+          gte: startOfMonth,
+          lte: endOfMonth,
+        },
+      };
+      // Untuk mode bulan, targetDateStr diisi awal bulan agar konsisten
+      targetDateStr = `${y}-${String(m).padStart(2, "0")}-01`;
+    } else if (date && date.includes("-")) {
       const [y, m, d] = date.split("-").map(Number);
       year = y;
       month = m - 1;
@@ -93,55 +108,55 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // 2. Fetch active schedules - filter berdasarkan hari yang tampil (bukan hardcode Sabtu)
-    // HANYA ambil jadwal yang tanggal pembuatannya (createdAt) <= targetDate (tidak muncul di masa lalu sebelum dibuat)
-    const endOfTargetDay = new Date(year, month, dayDate, 23, 59, 59, 999);
-    const activeSchedules = await prisma.studentSchedule.findMany({
-      where: {
-        isActive: true,
-        createdAt: { lte: endOfTargetDay },
-        days: { contains: dayName, mode: "insensitive" },
-      },
-      include: {
-        student: {
-          include: { branch: true },
+    // 2. Fetch active schedules - hanya untuk mode harian (date), skip jika mode bulanan (month)
+    let scheduledItems: any[] = [];
+    if (!monthParam) {
+      const endOfTargetDay = new Date(year, month, dayDate, 23, 59, 59, 999);
+      const activeSchedules = await prisma.studentSchedule.findMany({
+        where: {
+          isActive: true,
+          createdAt: { lte: endOfTargetDay },
+          days: { contains: dayName, mode: "insensitive" },
         },
-        branch: true,
-        tutor: true,
-      },
-    });
+        include: {
+          student: {
+            include: { branch: true },
+          },
+          branch: true,
+          tutor: true,
+        },
+      });
 
-    // Map each scheduled student to see if they are validated or still pending
-    // Cek berdasarkan studentId + tanggal target agar jadwal baru/edit muncul di tab BELUM_VALIDASI
-    const scheduledItems = activeSchedules.map((sch) => {
-      const existingAtt = validatedAttendances.find(
-        (a) => a.studentId === sch.studentId && a.date === targetDateStr
-      );
-      return {
-        id: existingAtt ? existingAtt.id : `sch-${sch.id}`,
-        scheduleId: sch.id,
-        studentId: sch.studentId,
-        studentName: sch.student?.name || "Siswa",
-        nis: sch.student?.nis || "",
-        gradeLevel: sch.student?.gradeLevel || "",
-        parentPhone: sch.student?.parentPhone || "",
-        parentName: sch.student?.parentName || "",
-        branchId: sch.branchId || sch.student?.branchId || "",
-        branchName: sch.branch?.name || sch.student?.branch?.name || "Cabang Utama",
-        tutorId: existingAtt ? (existingAtt.tutorId || sch.tutorId || "") : (sch.tutorId || ""),
-        tentorName: existingAtt ? (existingAtt.tentorName && existingAtt.tentorName !== "-" ? existingAtt.tentorName : (sch.tutor?.name || sch.tentorName || "-")) : (sch.tutor?.name || sch.tentorName || "-"),
-        sessionInfo: `${sch.startTime} - ${sch.endTime}`,
-        startTime: sch.startTime,
-        endTime: sch.endTime,
-        date: targetDateStr,
-        dayName,
-        status: existingAtt ? existingAtt.status : "BELUM_VALIDASI",
-        materi: existingAtt ? (existingAtt.materi || "") : "",
-        notes: existingAtt ? existingAtt.notes : "Menunggu validasi tentor",
-        isValidated: !!existingAtt,
-        timeIn: existingAtt ? existingAtt.timeIn : "-",
-      };
-    });
+      scheduledItems = activeSchedules.map((sch) => {
+        const existingAtt = validatedAttendances.find(
+          (a) => a.studentId === sch.studentId && a.date === targetDateStr
+        );
+        return {
+          id: existingAtt ? existingAtt.id : `sch-${sch.id}`,
+          scheduleId: sch.id,
+          studentId: sch.studentId,
+          studentName: sch.student?.name || "Siswa",
+          nis: sch.student?.nis || "",
+          gradeLevel: sch.student?.gradeLevel || "",
+          parentPhone: sch.student?.parentPhone || "",
+          parentName: sch.student?.parentName || "",
+          branchId: sch.branchId || sch.student?.branchId || "",
+          branchName: sch.branch?.name || sch.student?.branch?.name || "Cabang Utama",
+          tutorId: existingAtt ? (existingAtt.tutorId || sch.tutorId || "") : (sch.tutorId || ""),
+          tentorName: existingAtt ? (existingAtt.tentorName && existingAtt.tentorName !== "-" ? existingAtt.tentorName : (sch.tutor?.name || sch.tentorName || "-")) : (sch.tutor?.name || sch.tentorName || "-"),
+          sessionInfo: `${sch.startTime} - ${sch.endTime}`,
+          startTime: sch.startTime,
+          endTime: sch.endTime,
+          date: targetDateStr,
+          dayName,
+          status: existingAtt ? existingAtt.status : "BELUM_VALIDASI",
+          materi: existingAtt ? (existingAtt.materi || "") : "",
+          notes: existingAtt ? existingAtt.notes : "Menunggu validasi tentor",
+          isValidated: !!existingAtt,
+          timeIn: existingAtt ? existingAtt.timeIn : "-",
+        };
+      });
+    }
 
     return NextResponse.json({
       success: true,

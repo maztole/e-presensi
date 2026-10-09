@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Users,
   GraduationCap,
+  Calendar,
 } from "lucide-react";
 
 type TabType = "siswa" | "tentor";
@@ -22,18 +23,19 @@ export default function AttendanceHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [monthFilter, setMonthFilter] = useState(() => new Date().toISOString().slice(0, 7));
   const [downloadSuccess, setDownloadSuccess] = useState(false);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [monthFilter]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const [resStudent, resTutor] = await Promise.all([
-        fetch("/api/attendances"),
-        fetch("/api/tutor-attendances"),
+        fetch(`/api/attendances?month=${monthFilter || ""}`),
+        fetch(`/api/tutor-attendances?month=${monthFilter || ""}`),
       ]);
       const dataStudent = await resStudent.json();
       const dataTutor = await resTutor.json();
@@ -85,7 +87,7 @@ export default function AttendanceHistoryPage() {
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `rekap_presensi_siswa_${new Date().toISOString().split("T")[0]}.csv`);
+      link.setAttribute("download", `rekap_presensi_siswa_${monthFilter || new Date().toISOString().slice(0, 7)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -103,7 +105,7 @@ export default function AttendanceHistoryPage() {
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `rekap_presensi_tentor_${new Date().toISOString().split("T")[0]}.csv`);
+      link.setAttribute("download", `rekap_presensi_tentor_${monthFilter || new Date().toISOString().slice(0, 7)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -179,8 +181,8 @@ export default function AttendanceHistoryPage() {
         </button>
       </div>
 
-      {/* Filter & Search */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      {/* Filter & Search - Per Bulan */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
         <div className="relative">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
@@ -189,6 +191,16 @@ export default function AttendanceHistoryPage() {
             onChange={(e) => setSearch(e.target.value)}
             placeholder={activeTab === "siswa" ? "Cari nama siswa atau sesi..." : "Cari nama tentor atau topik..."}
             className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Calendar size={15} className="text-slate-400 shrink-0" />
+          <input
+            type="month"
+            value={monthFilter}
+            onChange={(e) => setMonthFilter(e.target.value)}
+            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 

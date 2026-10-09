@@ -2,8 +2,8 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import {
-  Building2,
   Mail,
   Lock,
   Eye,
@@ -37,7 +37,11 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error || "Gagal masuk. Periksa email & password Anda.");
+        setError(
+          res.status === 401
+            ? "Username atau password salah."
+            : data.error || "Gagal masuk. Periksa email & password Anda."
+        );
         setLoading(false);
         return;
       }
@@ -74,14 +78,18 @@ export default function LoginPage() {
       <div className="w-full max-w-md bg-white border border-slate-200/80 rounded-3xl p-8 shadow-xl relative z-10 space-y-6">
         {/* Brand & Title */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-linear-to-tr from-blue-600 to-indigo-600 shadow-md shadow-blue-500/20 mb-1">
-            <Building2 className="w-7 h-7 text-white" />
-          </div>
+          <Image
+            src="/images/logo-ahe.png"
+            alt="Logo AHE"
+            width={500}
+            height={500}
+            className="mx-auto h-30 w-30 object-contain mb-1"
+          />
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            E-Presensi Bimbel
+            SIPENA - AHE
           </h1>
           <p className="text-xs text-slate-500">
-            Masuk ke panel manajemen presensi &amp; administrasi tempat les
+            Sistem Informasi Presensi & Manajemen AHE
           </p>
         </div>
 
@@ -105,7 +113,7 @@ export default function LoginPage() {
           {/* Email */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-700 block">
-              Email Pengguna
+              Email
             </label>
             <div className="relative">
               <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -114,7 +122,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="nama@bimbel.id"
+                placeholder="Masukkan Email"
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
               />
             </div>
@@ -122,14 +130,9 @@ export default function LoginPage() {
 
           {/* Password */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-slate-700">
-                Password
-              </label>
-              <span className="text-[11px] text-blue-600 hover:underline cursor-pointer font-medium">
-                Lupa sandi?
-              </span>
-            </div>
+            <label className="text-xs font-semibold text-slate-700">
+              Password
+            </label>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
@@ -137,7 +140,7 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="Masukkan Password"
                 className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
               />
               <button
@@ -171,17 +174,12 @@ export default function LoginPage() {
               <span>Memproses...</span>
             ) : (
               <>
-                <span>Masuk ke Dashboard</span>
-                <ArrowRight size={15} />
+                <span>Masuk</span>
               </>
             )}
           </button>
         </form>
-
-        {/* Footer */}
-        <div className="pt-2 text-center text-[11px] text-slate-400">
-          Sistem Presensi &bull; Bintang Prestasi 2026
-        </div>
+        
       </div>
     </div>
   );

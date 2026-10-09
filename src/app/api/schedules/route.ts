@@ -63,8 +63,8 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    const mappedSchedules = schedules.map((sch) => {
-      const att = todayAttendances.find((a) => a.studentId === sch.studentId);
+    const mappedSchedules = schedules.map((sch: any) => {
+      const att = todayAttendances.find((a: any) => a.studentId === sch.studentId);
       return {
         ...sch,
         todayStatus: att ? att.status : "BELUM_PRESENSI",

@@ -165,31 +165,6 @@ export function ThemeCustomizerModal({ isOpen, onClose }: ModalProps) {
               ))}
             </div>
           </div>
-
-          {/* Toleransi Waktu Terlambat */}
-          <div className="space-y-3">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
-              <Clock size={14} /> Toleransi Keterlambatan Presensi
-            </label>
-            <div className="flex items-center gap-3">
-              <input
-                type="number"
-                min="0"
-                max="60"
-                value={formState.lateToleranceMinutes}
-                onChange={(e) =>
-                  setFormState({
-                    ...formState,
-                    lateToleranceMinutes: parseInt(e.target.value) || 0,
-                  })
-                }
-                className="w-24 px-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-center text-slate-800 dark:text-slate-100"
-              />
-              <span className="text-xs text-slate-600 dark:text-slate-400">
-                Menit setelah jam sesi dimulai dianggap <b>Terlambat</b>
-              </span>
-            </div>
-          </div>
         </div>
 
         {/* Footer Actions */}

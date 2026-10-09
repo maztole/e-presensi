@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { success: false, error: "Email/NIP atau password salah! (Admin: admin@bimbel.id / admin123, Tentor: tentor@bimbel.id / tentor123)" },
+      { success: false, error: "Username atau password salah." },
       { status: 401 }
     );
   } catch (error: any) {
