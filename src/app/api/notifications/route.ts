@@ -19,7 +19,7 @@ export async function GET() {
     }
 
     // 2. Fetch non-expired notifications
-    let notifications = [];
+    let notifications: Awaited<ReturnType<typeof prisma.notification.findMany>> = [];
     try {
       notifications = await prisma.notification.findMany({
         where: {
