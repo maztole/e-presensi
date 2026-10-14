@@ -47,6 +47,7 @@ export function ThemeCustomizerModal({ isOpen, onClose }: ModalProps) {
       lesTagline: "Sistem Presensi & Manajemen Bimbel",
       accentColor: "blue",
       mode: "light",
+      sidebarMode: "dark",
       lateToleranceMinutes: 15,
     });
     onClose();
@@ -138,6 +139,37 @@ export function ThemeCustomizerModal({ isOpen, onClose }: ModalProps) {
                 }`}
               >
                 <Moon size={16} /> Dark Mode
+              </button>
+            </div>
+          </div>
+
+          {/* Mode Sidebar */}
+          <div className="space-y-3">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Warna Sidebar
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setFormState({ ...formState, sidebarMode: "light" })}
+                className={`p-3 rounded-2xl border flex items-center justify-center gap-2 text-xs font-bold transition-all cursor-pointer ${
+                  formState.sidebarMode === "light"
+                    ? "bg-slate-100 border-slate-400 text-slate-700 ring-2 ring-slate-300"
+                    : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                }`}
+              >
+                <span className="w-4 h-4 rounded-full bg-white border border-slate-300" /> Sidebar Putih
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormState({ ...formState, sidebarMode: "dark" })}
+                className={`p-3 rounded-2xl border flex items-center justify-center gap-2 text-xs font-bold transition-all cursor-pointer ${
+                  formState.sidebarMode === "dark"
+                    ? "bg-slate-800 border-slate-600 text-slate-100 ring-2 ring-slate-600"
+                    : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                }`}
+              >
+                <span className="w-4 h-4 rounded-full bg-slate-900 border border-slate-700" /> Sidebar Hitam
               </button>
             </div>
           </div>

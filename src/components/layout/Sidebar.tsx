@@ -49,23 +49,45 @@ export function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const [internalCollapsed, setInternalCollapsed] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<number, boolean>>({});
   const { settings, themeColors } = useThemeCMS();
+  const isSidebarLight = settings.sidebarMode === "light";
 
   const collapsed = externalCollapsed !== undefined ? externalCollapsed : internalCollapsed;
   const setCollapsed = externalSetCollapsed || setInternalCollapsed;
 
+  const toggleGroup = (groupIndex: number) => {
+    setOpenGroups((prev) => {
+      const currentOpen = prev[groupIndex] ?? false;
+      const nextState: Record<number, boolean> = {};
+
+      Object.keys(prev).forEach((key) => {
+        nextState[Number(key)] = false;
+      });
+
+      nextState[groupIndex] = !currentOpen;
+      return nextState;
+    });
+  };
+
+  const sidebarShellClass = isSidebarLight
+    ? "bg-white text-slate-800 border-slate-200 shadow-sm"
+    : "bg-slate-900 text-slate-100 border-slate-800";
+
+  const sidebarHeaderTextClass = isSidebarLight ? "text-slate-900" : "text-white";
+  const sidebarMutedTextClass = isSidebarLight ? "text-slate-500" : "text-slate-400";
+  const sidebarGroupTitleClass = isSidebarLight ? "text-slate-500" : "text-slate-400";
+  const sidebarItemIdleClass = isSidebarLight
+    ? "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+    : "text-slate-400 hover:text-slate-100 hover:bg-slate-800/60";
+  const sidebarItemIconIdleClass = isSidebarLight
+    ? "text-slate-500 group-hover:text-slate-700"
+    : "text-slate-400 group-hover:text-slate-200";
+  const sidebarBadgeClass = isSidebarLight
+    ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+    : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
 
   const menuGroups: MenuGroup[] = [
-    {
-      title: "Utama",
-      items: [
-        {
-          name: "Dashboard",
-          href: "/admin/dashboard",
-          icon: LayoutDashboard,
-        },
-      ],
-    },
     {
       title: "Manajemen Presensi",
       items: [
@@ -87,7 +109,7 @@ export function Sidebar({
       ],
     },
     {
-      title: "Manajemen Pengguna & Cabang",
+      title: "Manajemen Pengguna",
       items: [
         {
           name: "Data Tentor",
@@ -148,20 +170,32 @@ export function Sidebar({
     },
   ];
 
+  const handleMenuClick = (groupIndex: number) => {
+    setOpenGroups((prev) => {
+      const nextState: Record<number, boolean> = {};
+      Object.keys(prev).forEach((key) => {
+        nextState[Number(key)] = false;
+      });
+      nextState[groupIndex] = true;
+      return nextState;
+    });
+    setMobileOpen(false);
+  };
+
   const sidebarContent = (
-    <div className="flex flex-col h-full bg-slate-900 text-slate-100 border-r border-slate-800 transition-all duration-300">
+    <div className={`flex flex-col h-full border-r transition-all duration-300 ${sidebarShellClass}`}>
       {/* Brand Header */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-slate-800">
+      <div className={`h-16 flex items-center justify-between px-4 border-b ${isSidebarLight ? "border-slate-200" : "border-slate-800"}`}>
         <div className="flex items-center gap-3 overflow-hidden">
           <div className={`w-10 h-10 rounded-xl bg-linear-to-tr ${themeColors.logoGradient} flex items-center justify-center shrink-0 shadow-lg ${themeColors.shadow}`}>
             <Building2 className="w-5 h-5 text-white" />
           </div>
           {(!collapsed || mobileOpen) && (
             <div className="flex flex-col min-w-0">
-              <span className="font-bold text-sm tracking-tight text-white truncate">
+              <span className={`font-bold text-[14px] tracking-tight truncate ${sidebarHeaderTextClass}`}>
                 {settings.lesName}
               </span>
-              <span className={`text-[11px] ${themeColors.textMuted} font-medium truncate`}>
+              <span className={`text-[11px] ${isSidebarLight ? "text-slate-500" : themeColors.textMuted} font-medium truncate`}>
                 {settings.lesTagline}
               </span>
             </div>
@@ -171,65 +205,114 @@ export function Sidebar({
         {/* Mobile Close Button */}
         <button
           onClick={() => setMobileOpen(false)}
-          className="md:hidden p-1.5 rounded-lg hover:bg-slate-800 text-slate-400"
+          className={`md:hidden p-1.5 rounded-lg ${isSidebarLight ? "hover:bg-slate-100 text-slate-500" : "hover:bg-slate-800 text-slate-400"}`}
         >
           <X size={20} />
         </button>
       </div>
 
       {/* Navigation List */}
-      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-800">
-        {menuGroups.map((group, groupIdx) => (
-          <div key={groupIdx} className="space-y-1">
-            {(!collapsed || mobileOpen) && (
-              <h3 className="px-3 text-[11px] font-semibold tracking-wider text-slate-400 uppercase mb-2">
-                {group.title}
-              </h3>
-            )}
+      <div className={`flex-1 overflow-y-auto px-3 py-4 space-y-3 scrollbar-thin ${isSidebarLight ? "scrollbar-thumb-slate-300" : "scrollbar-thumb-slate-800"}`}>
+        <Link
+          href="/admin/dashboard"
+          onClick={() => setMobileOpen(false)}
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-medium transition-all duration-500 group relative ${
+            pathname === "/admin/dashboard"
+              ? `${themeColors.bg} text-white shadow-md ${themeColors.shadow}`
+              : sidebarItemIdleClass
+          }`}
+        >
+          <LayoutDashboard
+            className={`w-5 h-5 shrink-0 transition-transform duration-500 ${
+              pathname === "/admin/dashboard" ? "text-white" : sidebarItemIconIdleClass
+            }`}
+          />
+          <span className="truncate flex-1">Dashboard</span>
+        </Link>
 
-            {group.items.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
+        {menuGroups.map((group, groupIdx) => {
+          const hasActiveItem = group.items.some((item) => pathname === item.href);
+          const isGroupOpen = openGroups[groupIdx] ?? hasActiveItem;
+          const shouldShowItems = !collapsed || mobileOpen ? isGroupOpen : false;
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group relative ${
-                    isActive
-                      ? `${themeColors.bg} text-white shadow-md ${themeColors.shadow}`
-                      : "text-slate-400 hover:text-slate-100 hover:bg-slate-800/60"
+          return (
+            <div key={groupIdx} className="space-y-1">
+              {(!collapsed || mobileOpen) && (
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(groupIdx)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition-all duration-500 ${
+                    isSidebarLight
+                      ? "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                      : "text-slate-300 hover:bg-slate-800/70 hover:text-slate-100"
                   }`}
-                  title={collapsed ? item.name : undefined}
                 >
-                  <Icon
-                    className={`w-5 h-5 shrink-0 transition-transform duration-200 ${
-                      isActive ? "text-white" : "text-slate-400 group-hover:text-slate-200"
-                    }`}
-                  />
-
-                  {(!collapsed || mobileOpen) && (
-                    <span className="truncate flex-1">{item.name}</span>
-                  )}
-
-                  {item.badge && (!collapsed || mobileOpen) && (
-                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                      {item.badge}
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex h-4 w-4 items-center justify-center ${sidebarGroupTitleClass}`}>
+                      {group.title === "Manajemen Presensi" && <UserCheck className="w-3.5 h-3.5" />}
+                      {group.title === "Manajemen Pengguna" && <Users className="w-3.5 h-3.5" />}
+                      {group.title === "Laporan & Rekap" && <FileSpreadsheet className="w-3.5 h-3.5" />}
+                      {group.title === "Pengaturan" && <Settings className="w-3.5 h-3.5" />}
                     </span>
-                  )}
+                    <span className={`text-[11px] font-semibold tracking-wider uppercase ${sidebarGroupTitleClass}`}>
+                      {group.title}
+                    </span>
+                  </div>
+                  <span className={`text-xs transition-transform ${shouldShowItems ? "rotate-90" : "rotate-0"}`}>
+                    ▸
+                  </span>
+                </button>
+              )}
 
-                  {/* Tooltip for Collapsed Sidebar */}
-                  {collapsed && !mobileOpen && (
-                    <div className="absolute left-full ml-3 px-3 py-1.5 bg-slate-800 text-slate-100 text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity">
-                      {item.name}
-                    </div>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-        ))}
+              <div
+                className={`space-y-1 pl-5 transition-all duration-500 ease-in-out overflow-hidden ${
+                  shouldShowItems ? "max-h-96 opacity-100" : "max-h-0 opacity-0 pointer-events-none"
+                }`}
+              >
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href;
+
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => handleMenuClick(groupIdx)}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-medium transition-all duration-500 group relative ${
+                        isActive
+                          ? `${themeColors.bg} text-white shadow-md ${themeColors.shadow}`
+                          : sidebarItemIdleClass
+                      }`}
+                      title={collapsed ? item.name : undefined}
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full shrink-0 transition-all duration-500 ${
+                          isActive ? "bg-white" : isSidebarLight ? "bg-slate-400" : "bg-slate-500"
+                        }`}
+                      />
+
+                      {(!collapsed || mobileOpen) && (
+                        <span className="truncate flex-1">{item.name}</span>
+                      )}
+
+                      {item.badge && (!collapsed || mobileOpen) && (
+                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${sidebarBadgeClass}`}>
+                          {item.badge}
+                        </span>
+                      )}
+
+                      {collapsed && !mobileOpen && (
+                        <div className={`absolute left-full ml-3 px-3 py-1.5 text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-500 ${isSidebarLight ? "bg-slate-800 text-white" : "bg-slate-800 text-slate-100"}`}>
+                          {item.name}
+                        </div>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -239,7 +322,7 @@ export function Sidebar({
       {/* Desktop Permanent Sidebar */}
       <aside
         className={`hidden md:flex flex-col sticky top-0 h-screen transition-all duration-300 z-30 ${
-          collapsed ? "w-20" : "w-64"
+          collapsed ? "w-24" : "w-72"
         }`}
       >
         {sidebarContent}
@@ -255,7 +338,7 @@ export function Sidebar({
 
       {/* Mobile Drawer */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 w-72 z-50 md:hidden transition-transform duration-300 ${
+        className={`fixed top-0 bottom-0 left-0 w-80 z-50 md:hidden transition-transform duration-300 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >

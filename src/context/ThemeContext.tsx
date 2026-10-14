@@ -9,6 +9,7 @@ export interface ThemeSettings {
   lesTagline: string;
   accentColor: AccentColor;
   mode: "light" | "dark";
+  sidebarMode: "light" | "dark";
   lateToleranceMinutes: number;
 }
 
@@ -134,6 +135,7 @@ const defaultSettings: ThemeSettings = {
   lesTagline: "Sistem Presensi & Manajemen Bimbel",
   accentColor: "blue",
   mode: "light",
+  sidebarMode: "dark",
   lateToleranceMinutes: 15,
 };
 
