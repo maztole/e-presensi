@@ -37,6 +37,7 @@ function TutorLayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* Modal Pengaturan Tema & Warna Akses Tentor */}
       <TutorThemeModal
+        key={isThemeModalOpen ? "tutor-theme-modal-open" : "tutor-theme-modal-closed"}
         isOpen={isThemeModalOpen}
         onClose={() => setIsThemeModalOpen(false)}
       />

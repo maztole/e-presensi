@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useThemeCMS } from "@/context/ThemeContext";
 import {
@@ -45,16 +46,13 @@ export function Sidebar({
   mobileOpen,
   setMobileOpen,
   collapsed: externalCollapsed,
-  setCollapsed: externalSetCollapsed,
 }: SidebarProps) {
   const pathname = usePathname();
-  const [internalCollapsed, setInternalCollapsed] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<number, boolean>>({});
   const { settings, themeColors } = useThemeCMS();
   const isSidebarLight = settings.sidebarMode === "light";
 
-  const collapsed = externalCollapsed !== undefined ? externalCollapsed : internalCollapsed;
-  const setCollapsed = externalSetCollapsed || setInternalCollapsed;
+  const collapsed = externalCollapsed ?? false;
 
   const toggleGroup = (groupIndex: number) => {
     setOpenGroups((prev) => {
@@ -75,7 +73,6 @@ export function Sidebar({
     : "bg-slate-900 text-slate-100 border-slate-800";
 
   const sidebarHeaderTextClass = isSidebarLight ? "text-slate-900" : "text-white";
-  const sidebarMutedTextClass = isSidebarLight ? "text-slate-500" : "text-slate-400";
   const sidebarGroupTitleClass = isSidebarLight ? "text-slate-500" : "text-slate-400";
   const sidebarItemIdleClass = isSidebarLight
     ? "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
@@ -185,21 +182,24 @@ export function Sidebar({
   const sidebarContent = (
     <div className={`flex flex-col h-full border-r transition-all duration-300 ${sidebarShellClass}`}>
       {/* Brand Header */}
-      <div className={`h-16 flex items-center justify-between px-4 border-b ${isSidebarLight ? "border-slate-200" : "border-slate-800"}`}>
-        <div className="flex items-center gap-3 overflow-hidden">
-          <div className={`w-10 h-10 rounded-xl bg-linear-to-tr ${themeColors.logoGradient} flex items-center justify-center shrink-0 shadow-lg ${themeColors.shadow}`}>
-            <Building2 className="w-5 h-5 text-white" />
+      <div className={`h-16 flex items-center ${collapsed && !mobileOpen ? "justify-center" : "justify-between"} px-4 border-b transition-all duration-300 ease-in-out ${isSidebarLight ? "border-slate-200" : "border-slate-800"}`}>
+        <div className={`flex items-center overflow-hidden transition-all duration-300 ease-in-out ${collapsed && !mobileOpen ? "gap-0" : "gap-3"}`}>
+          <Image
+            src="/images/logo-ahe.png"
+            alt="Logo Bimbel Anak Hebat"
+            width={40}
+            height={40}
+            className="w-10 h-10 object-contain shrink-0 transition-all duration-300 ease-in-out"
+            priority
+          />
+          <div className={`flex flex-col min-w-0 overflow-hidden transition-all duration-300 ease-in-out ${collapsed && !mobileOpen ? "max-w-0 -translate-x-2 opacity-0" : "max-w-[220px] translate-x-0 opacity-100"}`} aria-hidden={collapsed && !mobileOpen}>
+            <span className={`font-bold text-[14px] tracking-tight truncate whitespace-nowrap ${sidebarHeaderTextClass}`}>
+              {settings.lesName}
+            </span>
+            <span className={`text-[11px] ${isSidebarLight ? "text-slate-500" : themeColors.textMuted} font-medium truncate whitespace-nowrap`}>
+              {settings.lesTagline}
+            </span>
           </div>
-          {(!collapsed || mobileOpen) && (
-            <div className="flex flex-col min-w-0">
-              <span className={`font-bold text-[14px] tracking-tight truncate ${sidebarHeaderTextClass}`}>
-                {settings.lesName}
-              </span>
-              <span className={`text-[11px] ${isSidebarLight ? "text-slate-500" : themeColors.textMuted} font-medium truncate`}>
-                {settings.lesTagline}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Mobile Close Button */}
@@ -216,7 +216,8 @@ export function Sidebar({
         <Link
           href="/admin/dashboard"
           onClick={() => setMobileOpen(false)}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-medium transition-all duration-500 group relative ${
+          title={collapsed && !mobileOpen ? "Dashboard" : undefined}
+          className={`flex items-center ${collapsed && !mobileOpen ? "justify-center" : "gap-3"} px-3 py-2.5 rounded-xl text-[14px] font-medium transition-all duration-500 group relative ${
             pathname === "/admin/dashboard"
               ? `${themeColors.bg} text-white shadow-md ${themeColors.shadow}`
               : sidebarItemIdleClass
@@ -227,50 +228,55 @@ export function Sidebar({
               pathname === "/admin/dashboard" ? "text-white" : sidebarItemIconIdleClass
             }`}
           />
-          <span className="truncate flex-1">Dashboard</span>
+          <span className={`overflow-hidden whitespace-nowrap transition-all duration-300 ease-in-out ${collapsed && !mobileOpen ? "max-w-0 flex-none opacity-0 -translate-x-2" : "max-w-[180px] flex-1 opacity-100 translate-x-0"}`} aria-hidden={collapsed && !mobileOpen}>Dashboard</span>
+          {collapsed && !mobileOpen && (
+            <div className={`absolute left-full ml-3 px-3 py-1.5 text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-opacity duration-500 ${isSidebarLight ? "bg-slate-800 text-white" : "bg-slate-800 text-slate-100"}`}>
+              Dashboard
+            </div>
+          )}
         </Link>
 
         {menuGroups.map((group, groupIdx) => {
           const hasActiveItem = group.items.some((item) => pathname === item.href);
-          const isGroupOpen = openGroups[groupIdx] ?? hasActiveItem;
-          const shouldShowItems = !collapsed || mobileOpen ? isGroupOpen : false;
+          const isGroupOpen = openGroups[groupIdx] ?? false;
+          const shouldShowItems = mobileOpen || (!collapsed && isGroupOpen) || (collapsed && hasActiveItem);
 
           return (
             <div key={groupIdx} className="space-y-1">
-              {(!collapsed || mobileOpen) && (
+              {(
                 <button
                   type="button"
                   onClick={() => toggleGroup(groupIdx)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition-all duration-500 ${
+                  title={collapsed && !mobileOpen ? group.title : undefined}
+                  className={`w-full flex items-center ${collapsed && !mobileOpen ? "justify-center px-0" : "justify-between px-3"} py-2 rounded-xl text-left transition-all duration-500 ${
                     isSidebarLight
                       ? "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                       : "text-slate-300 hover:bg-slate-800/70 hover:text-slate-100"
                   }`}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className={`flex items-center ${collapsed && !mobileOpen ? "gap-0" : "gap-2"}`}>
                     <span className={`inline-flex h-4 w-4 items-center justify-center ${sidebarGroupTitleClass}`}>
                       {group.title === "Manajemen Presensi" && <UserCheck className="w-3.5 h-3.5" />}
                       {group.title === "Manajemen Pengguna" && <Users className="w-3.5 h-3.5" />}
                       {group.title === "Laporan & Rekap" && <FileSpreadsheet className="w-3.5 h-3.5" />}
                       {group.title === "Pengaturan" && <Settings className="w-3.5 h-3.5" />}
                     </span>
-                    <span className={`text-[11px] font-semibold tracking-wider uppercase ${sidebarGroupTitleClass}`}>
+                    <span className={`overflow-hidden whitespace-nowrap text-[11px] font-semibold tracking-wider uppercase transition-all duration-300 ease-in-out ${sidebarGroupTitleClass} ${collapsed && !mobileOpen ? "max-w-0 opacity-0 -translate-x-2" : "max-w-[180px] opacity-100 translate-x-0"}`} aria-hidden={collapsed && !mobileOpen}>
                       {group.title}
                     </span>
                   </div>
-                  <span className={`text-xs transition-transform ${shouldShowItems ? "rotate-90" : "rotate-0"}`}>
+                  <span className={`overflow-hidden text-xs transition-all duration-300 ease-in-out ${collapsed && !mobileOpen ? "w-0 opacity-0" : "w-3 opacity-100"} ${shouldShowItems ? "rotate-90" : "rotate-0"}`} aria-hidden={collapsed && !mobileOpen}>
                     ▸
                   </span>
                 </button>
               )}
 
               <div
-                className={`space-y-1 pl-5 transition-all duration-500 ease-in-out overflow-hidden ${
-                  shouldShowItems ? "max-h-96 opacity-100" : "max-h-0 opacity-0 pointer-events-none"
+                className={`space-y-1 ${collapsed && !mobileOpen ? "pl-0" : "pl-5"} transition-all duration-500 ease-in-out overflow-hidden ${
+                  shouldShowItems ? "max-h-96 opacity-100 pointer-events-auto" : "max-h-0 opacity-0 pointer-events-none"
                 }`}
               >
                 {group.items.map((item) => {
-                  const Icon = item.icon;
                   const isActive = pathname === item.href;
 
                   return (
@@ -278,7 +284,7 @@ export function Sidebar({
                       key={item.href}
                       href={item.href}
                       onClick={() => handleMenuClick(groupIdx)}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-medium transition-all duration-500 group relative ${
+                      className={`flex items-center ${collapsed && !mobileOpen ? "justify-center" : "gap-3"} px-3 py-2.5 rounded-xl text-[14px] font-medium transition-all duration-500 group relative ${
                         isActive
                           ? `${themeColors.bg} text-white shadow-md ${themeColors.shadow}`
                           : sidebarItemIdleClass
@@ -286,14 +292,12 @@ export function Sidebar({
                       title={collapsed ? item.name : undefined}
                     >
                       <span
-                        className={`w-1.5 h-1.5 rounded-full shrink-0 transition-all duration-500 ${
+                        className={`w-2 h-2 rounded-full shrink-0 transition-all duration-500 ${
                           isActive ? "bg-white" : isSidebarLight ? "bg-slate-400" : "bg-slate-500"
                         }`}
                       />
 
-                      {(!collapsed || mobileOpen) && (
-                        <span className="truncate flex-1">{item.name}</span>
-                      )}
+                      <span className={`overflow-hidden whitespace-nowrap transition-all duration-300 ease-in-out ${collapsed && !mobileOpen ? "max-w-0 flex-none opacity-0 -translate-x-2" : "max-w-[180px] flex-1 opacity-100 translate-x-0"}`} aria-hidden={collapsed && !mobileOpen}>{item.name}</span>
 
                       {item.badge && (!collapsed || mobileOpen) && (
                         <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${sidebarBadgeClass}`}>

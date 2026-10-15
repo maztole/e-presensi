@@ -130,8 +130,8 @@ interface ThemeContextType {
   resetSettings: () => void;
 }
 
-const defaultSettings: ThemeSettings = {
-  lesName: "Bimbel Bintang Prestasi",
+export const defaultThemeSettings: ThemeSettings = {
+  lesName: "Bimbel Anak Hebat",
   lesTagline: "Sistem Presensi & Manajemen Bimbel",
   accentColor: "blue",
   mode: "light",
@@ -139,11 +139,12 @@ const defaultSettings: ThemeSettings = {
   lateToleranceMinutes: 15,
 };
 
+const defaultSettings = defaultThemeSettings;
+
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<ThemeSettings>(defaultSettings);
-  const [isInitialized, setIsInitialized] = useState(false);
 
   // Apply dark class helper
   const applyThemeMode = (mode: "light" | "dark") => {
@@ -158,27 +159,28 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    const saved = localStorage.getItem("epresensi_theme_cms");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        const merged = { ...defaultSettings, ...parsed };
-        setSettings(merged);
-        applyThemeMode(merged.mode);
-      } catch (e) {
-        console.error("Failed to parse saved theme settings", e);
+    if (typeof window === "undefined") return;
+
+    try {
+      const saved = window.localStorage.getItem("epresensi_theme_cms");
+      if (saved) {
+        const parsed = JSON.parse(saved) as Partial<ThemeSettings>;
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setSettings({ ...defaultSettings, ...parsed });
       }
-    } else {
-      applyThemeMode(defaultSettings.mode);
+    } catch (error) {
+      console.error("Failed to parse saved theme settings", error);
     }
-    setIsInitialized(true);
+
+    applyThemeMode(defaultSettings.mode);
   }, []);
 
   useEffect(() => {
-    if (!isInitialized) return;
-    localStorage.setItem("epresensi_theme_cms", JSON.stringify(settings));
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("epresensi_theme_cms", JSON.stringify(settings));
+    }
     applyThemeMode(settings.mode);
-  }, [settings, isInitialized]);
+  }, [settings]);
 
   const updateSettings = (newSettings: Partial<ThemeSettings>) => {
     setSettings((prev) => {

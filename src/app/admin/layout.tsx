@@ -7,7 +7,6 @@ import { Header } from "@/components/layout/Header";
 import { ThemeCustomizerModal } from "@/components/cms/ThemeCustomizerModal";
 import { ManualAttendanceModal } from "@/components/modals/ManualAttendanceModal";
 import { AddStudentModal } from "@/components/modals/AddStudentModal";
-import { AddTutorModal } from "@/components/modals/AddTutorModal";
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -45,6 +44,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* Modals */}
       <ThemeCustomizerModal
+        key={isThemeModalOpen ? "admin-theme-modal-open" : "admin-theme-modal-closed"}
         isOpen={isThemeModalOpen}
         onClose={() => setIsThemeModalOpen(false)}
       />

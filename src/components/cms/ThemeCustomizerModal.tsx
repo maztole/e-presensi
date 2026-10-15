@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useThemeCMS, AccentColor } from "@/context/ThemeContext";
-import { X, Palette, Building, Sun, Moon, RotateCcw, Check, Sparkles, Clock } from "lucide-react";
+import React, { useState } from "react";
+import { useThemeCMS, AccentColor, defaultThemeSettings } from "@/context/ThemeContext";
+import { X, Palette, Building, Sun, Moon, RotateCcw, Check } from "lucide-react";
 
 interface ModalProps {
   isOpen: boolean;
@@ -22,12 +22,6 @@ export function ThemeCustomizerModal({ isOpen, onClose }: ModalProps) {
   const { settings, updateSettings, resetSettings } = useThemeCMS();
   const [formState, setFormState] = useState(settings);
 
-  useEffect(() => {
-    if (isOpen) {
-      setFormState(settings);
-    }
-  }, [isOpen, settings]);
-
   if (!isOpen) return null;
 
   const handleSave = () => {
@@ -42,14 +36,7 @@ export function ThemeCustomizerModal({ isOpen, onClose }: ModalProps) {
 
   const handleReset = () => {
     resetSettings();
-    setFormState({
-      lesName: "Bimbel Bintang Prestasi",
-      lesTagline: "Sistem Presensi & Manajemen Bimbel",
-      accentColor: "blue",
-      mode: "light",
-      sidebarMode: "dark",
-      lateToleranceMinutes: 15,
-    });
+    setFormState(defaultThemeSettings);
     onClose();
   };
 
@@ -95,7 +82,7 @@ export function ThemeCustomizerModal({ isOpen, onClose }: ModalProps) {
                 value={formState.lesName}
                 onChange={(e) => setFormState({ ...formState, lesName: e.target.value })}
                 className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Contoh: Bimbel Bintang Belajar"
+                placeholder="Contoh: Bimbel Anak Hebat"
               />
             </div>
             <div>
@@ -115,7 +102,7 @@ export function ThemeCustomizerModal({ isOpen, onClose }: ModalProps) {
           {/* Mode Tampilan */}
           <div className="space-y-3">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Mode Tampilan (Theme Mode)
+              Dashboard Theme
             </label>
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -146,7 +133,7 @@ export function ThemeCustomizerModal({ isOpen, onClose }: ModalProps) {
           {/* Mode Sidebar */}
           <div className="space-y-3">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Warna Sidebar
+              Sidebar Theme
             </label>
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -154,22 +141,22 @@ export function ThemeCustomizerModal({ isOpen, onClose }: ModalProps) {
                 onClick={() => setFormState({ ...formState, sidebarMode: "light" })}
                 className={`p-3 rounded-2xl border flex items-center justify-center gap-2 text-xs font-bold transition-all cursor-pointer ${
                   formState.sidebarMode === "light"
-                    ? "bg-slate-100 border-slate-400 text-slate-700 ring-2 ring-slate-300"
+                    ? "bg-white border-slate-300 text-slate-800 ring-2 ring-slate-200 shadow-sm"
                     : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
                 }`}
               >
-                <span className="w-4 h-4 rounded-full bg-white border border-slate-300" /> Sidebar Putih
+                <span className="w-4 h-4 rounded-full bg-white border border-slate-300" /> Light Mode
               </button>
               <button
                 type="button"
                 onClick={() => setFormState({ ...formState, sidebarMode: "dark" })}
                 className={`p-3 rounded-2xl border flex items-center justify-center gap-2 text-xs font-bold transition-all cursor-pointer ${
                   formState.sidebarMode === "dark"
-                    ? "bg-slate-800 border-slate-600 text-slate-100 ring-2 ring-slate-600"
+                    ? "bg-slate-900 border-slate-700 text-slate-100 ring-2 ring-slate-600 shadow-sm"
                     : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
                 }`}
               >
-                <span className="w-4 h-4 rounded-full bg-slate-900 border border-slate-700" /> Sidebar Hitam
+                <span className="w-4 h-4 rounded-full bg-slate-900 border border-slate-700" /> Dark Mode
               </button>
             </div>
           </div>
