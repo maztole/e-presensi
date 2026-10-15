@@ -3,9 +3,12 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import "dotenv/config";
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || "postgresql://postgres.eoowaxvdktguwxcgenfy:IniPwEpresensi123@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres",
-});
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error("DATABASE_URL is required to connect to PostgreSQL.");
+}
+
+const pool = new Pool({ connectionString: databaseUrl });
 
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter, log: ["error", "warn"] });
@@ -21,7 +24,8 @@ async function main() {
     console.log("Enum AttendanceStatus in DB:", values);
 
     // Tambahkan TIDAK_HADIR jika belum ada di database
-    const hasTidakHadir = Array.isArray(values) && values.some((v: any) => v.enumlabel === "TIDAK_HADIR");
+    const enumValues = values as Array<{ enumlabel: string }>;
+    const hasTidakHadir = enumValues.some((value) => value.enumlabel === "TIDAK_HADIR");
     if (!hasTidakHadir) {
       console.log("Adding TIDAK_HADIR to enum AttendanceStatus...");
       await prisma.$executeRawUnsafe(`ALTER TYPE "AttendanceStatus" ADD VALUE 'TIDAK_HADIR';`);

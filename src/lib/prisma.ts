@@ -1,4 +1,3 @@
-// @ts-ignore
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
@@ -11,9 +10,11 @@ const globalForPrisma = globalThis as unknown as {
 
 function getPool() {
   if (!globalForPrisma.pgPool) {
-    const connectionString =
-      process.env.DATABASE_URL ||
-      "postgresql://postgres.eoowaxvdktguwxcgenfy:IniPwEpresensi123@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres";
+    const connectionString = process.env.DATABASE_URL;
+    if (!connectionString) {
+      throw new Error("DATABASE_URL is required to connect Prisma to PostgreSQL.");
+    }
+
     globalForPrisma.pgPool = new Pool({ connectionString });
   }
   return globalForPrisma.pgPool;
